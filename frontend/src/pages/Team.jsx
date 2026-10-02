@@ -3,11 +3,11 @@ import { Avatar, Card, Container, SimpleGrid, Stack, Text, Title } from '@mantin
 // PLACEHOLDER: roles are 'Team member' for everyone except Jeremy — fill in real roles / add links.
 const TEAM = [
   { name: 'Eli', role: 'Frontend Developer' },
-  { name: 'Ely', role: 'Team member' },
+  { name: 'Ely', role: 'Full Stack' },
   { name: 'Oliver', role: 'Backend Developer' },
   { name: 'Hazem', role: 'Backend Developer' },
   { name: 'Jeremy', role: 'Frontend Developer' },
-  { name: 'Jeremiah', role: 'Team member' },
+  { name: 'Jeremiah', role: 'Generalist' },
 ]
 
 export default function Team() {
