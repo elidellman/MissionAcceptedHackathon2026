@@ -1,0 +1,42 @@
+.header {
+  background: rgba(10, 12, 20, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logoDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--mantine-color-orange-5);
+  box-shadow: 0 0 12px var(--mantine-color-orange-5);
+}
+
+.link {
+  padding: 6px 12px;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 120ms, background 120ms;
+}
+
+.link:hover {
+  color: var(--mantine-color-white);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.active {
+  color: var(--mantine-color-white);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Mission Control page: fill everything below the header */
+.fullBleed {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
