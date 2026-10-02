@@ -1,6 +1,6 @@
 import { Avatar, Card, Container, SimpleGrid, Stack, Text, Title } from '@mantine/core'
 
-// Edit roles / add links here.
+// PLACEHOLDER: roles are 'Team member' for everyone except Jeremy — fill in real roles / add links.
 const TEAM = [
   { name: 'Eli', role: 'Team member' },
   { name: 'Ely', role: 'Team member' },

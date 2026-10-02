@@ -25,6 +25,7 @@ function useCountdown(targetIso) {
  * The overlay ignores mouse events so the scene can be dragged/rotated;
  * individual panels re-enable them (see .panel in the CSS).
  */
+// Weather colour comes straight from the backend (`weather` on each window) — the frontend doesn't compute it.
 export default function HudOverlay({ mission, windows, selectedId, onSelect }) {
   const next = windows[0]
   const countdown = useCountdown(next?.opensAt)
