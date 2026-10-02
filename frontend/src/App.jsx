@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button, Card, Container, Group, Loader, Stack, Text, Title } from '@mantine/core'
 import './App.css'
 
 function App() {
@@ -21,26 +22,27 @@ function App() {
   }
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1>Backend Test</h1>
-      <button type="button" onClick={callTestEndpoint} disabled={loading}>
-        {loading ? 'Loading...' : 'Call /api/test'}
-      </button>
+    <Container size="sm" py="xl">
+      <Card withBorder radius="md" p="xl">
+        <Stack gap="lg" align="center">
+          <Title order={1} c="black" size="h2">Mission Accepted 2026 Hackathon</Title>
 
-      {response && (
-        <pre
-          style={{
-            marginTop: '1rem',
-            background: '#f3f4f6',
-            padding: '1rem',
-            borderRadius: '8px',
-            overflowX: 'auto',
-          }}
-        >
-          {response}
-        </pre>
-      )}
-    </main>
+          <Group>
+            <Button onClick={callTestEndpoint} loading={loading}>
+              Call /api/test
+            </Button>
+          </Group>
+
+          {response && (
+            <Card withBorder radius="sm" p="md" bg="gray.0">
+              <Text component="pre" size="sm" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                {response}
+              </Text>
+            </Card>
+          )}
+        </Stack>
+      </Card>
+    </Container>
   )
 }
 

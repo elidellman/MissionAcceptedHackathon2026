@@ -24,7 +24,7 @@ def create_app(test_config=None):
     @app.route('/api/test')
     def test_endpoint():
         return jsonify({
-            'message': 'Backend test endpoint works',
+            'message': 'This backend was created using Flask, Created by Eli, Ely, Oliver, Hazem, Jeremy, Jeremiah ',
             'status': 'ok'
         })
 
