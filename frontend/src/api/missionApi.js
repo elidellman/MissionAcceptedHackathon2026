@@ -10,7 +10,7 @@
  */
 import {
   MOCK_LAUNCH_SITES,
-  MOCK_LAUNCH_WINDOWS_RESPONSE,
+  mockLaunchWindowsResponse,
   mockTrajectoryResponse,
 } from '../features/mission-control/mockData.js'
 
@@ -21,7 +21,7 @@ export const USE_MOCK = true
 export const ENDPOINTS = {
   test: '/api/test', //                                  exists today
   launchSites: '/api/launch-sites', //                   TODO(API)
-  launchWindows: '/api/launch-windows', //               TODO(API)  ?orbit=LEO&site_id=...&days=7
+  launchWindows: '/api/launch-windows', //               TODO(API)  ?site_id=&orbit=&inclination_deg=&altitude_km=&days=
   trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`, // TODO(API)
 }
 
@@ -42,17 +42,24 @@ export async function fetchLaunchSites() {
 }
 
 /**
- * GET /api/launch-windows?orbit=LEO&site_id=cape-canaveral&days=7
+ * GET /api/launch-windows?site_id=nova-scotia&orbit=LEO&inclination_deg=45.1&altitude_km=500&days=7
+ * Params come from the Mission Inputs panel.
  * → { mission, windows }
  */
-export async function fetchLaunchWindows({ orbit = 'LEO', siteId = 'cape-canaveral', days = 7 } = {}) {
+export async function fetchLaunchWindows({ siteId, orbit, inclinationDeg, altitudeKm, days }) {
+  const query = {
+    site_id: siteId,
+    orbit,
+    inclination_deg: String(inclinationDeg),
+    altitude_km: String(altitudeKm),
+    days: String(days),
+  }
   let data
   if (USE_MOCK) {
-    await delay(250)
-    data = MOCK_LAUNCH_WINDOWS_RESPONSE
+    await delay(300)
+    data = mockLaunchWindowsResponse(query)
   } else {
-    const qs = new URLSearchParams({ orbit, site_id: siteId, days: String(days) })
-    data = await getJson(`${ENDPOINTS.launchWindows}?${qs}`)
+    data = await getJson(`${ENDPOINTS.launchWindows}?${new URLSearchParams(query)}`)
   }
   return { mission: toMission(data.mission), windows: data.windows.map(toWindow) }
 }
@@ -78,6 +85,7 @@ const toMission = (m) => ({
   launchSite: toSite(m.launch_site),
   targetOrbit: m.target_orbit, // 'LEO' | 'Polar' | 'SSO'
   inclinationDeg: m.inclination_deg,
+  altitudeKm: m.altitude_km,
 })
 
 const toWindow = (w) => ({

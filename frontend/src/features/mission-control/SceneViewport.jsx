@@ -8,7 +8,7 @@ import classes from './MissionControl.module.css'
  * See README.md in this folder and /HANDOFF.md for the full guide.
  *
  * Props (already loaded for you — you don't need to fetch anything):
- *   mission     { name, vehicle, launchSite: {id, name, lat, lon}, targetOrbit, inclinationDeg }
+ *   mission     { name, vehicle, launchSite: {id, name, lat, lon}, targetOrbit, inclinationDeg, altitudeKm }
  *   windows     [{ id, opensAt, durationMin, weather }]
  *   selectedId  id of the selected launch window
  *   onSelect    (id) => void — call this if the user picks a window from inside the 3D scene
@@ -51,7 +51,9 @@ export default function SceneViewport({ mission, windows, selectedId, onSelect, 
   // TODO(3D): Earth           — textured sphere, rotating
   // TODO(3D): Launch site     — marker at mission.launchSite.lat/lon
   // TODO(3D): Trajectory      — line through `trajectory` points; redraw when selectedId changes
-  // TODO(3D): Target orbit    — ring tilted by mission.inclinationDeg
+  // TODO(3D): Target orbit    — ring tilted by mission.inclinationDeg, radius from mission.altitudeKm
+  // TODO(3D): Both launch sites: Spaceport Nova Scotia + Cape Canaveral (see launchConfig.js)
+  // NOTE: the left ~320px is covered by the Mission Inputs panel when open; centre the globe accordingly if you like.
   // TODO(3D): Camera controls — orbit / zoom (OrbitControls)
   // ───────────────────────────────────────────────────────────────────────────
 

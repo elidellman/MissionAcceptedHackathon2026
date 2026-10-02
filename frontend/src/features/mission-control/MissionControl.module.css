@@ -76,10 +76,18 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.topLeft {
+/* Left: Mission inputs panel (sits above the bottom windows bar) */
+.inputPanel {
   top: 12px;
   left: 12px;
-  max-width: 260px;
+  width: 300px;
+  max-width: calc(100% - 24px);
+  z-index: 2;
+}
+
+.panelToggle {
+  top: 12px;
+  left: 12px;
 }
 
 .topRight {
@@ -121,10 +129,17 @@
 }
 
 @media (max-width: 600px) {
-  .topLeft {
-    max-width: 55%;
-  }
   .countdown {
     font-size: 1.1rem;
   }
+}
+
+.errorBanner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40, 0, 0, 0.85);
+  padding: 6px 12px;
+  border-radius: 8px;
 }

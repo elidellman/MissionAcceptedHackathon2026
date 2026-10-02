@@ -26,28 +26,26 @@ function useCountdown(targetIso) {
  * individual panels re-enable them (see .panel in the CSS).
  */
 // Weather colour comes straight from the backend (`weather` on each window) — the frontend doesn't compute it.
-export default function HudOverlay({ mission, windows, selectedId, onSelect }) {
+// The left side is the MissionInputPanel (rendered by pages/MissionControl.jsx), not part of this file.
+export default function HudOverlay({ mission, windows, selectedId, onSelect, children }) {
   const next = windows[0]
   const countdown = useCountdown(next?.opensAt)
 
   return (
     <div className={classes.hud}>
-      {/* Top-left: mission info */}
-      <Paper className={`${classes.panel} ${classes.topLeft}`} p="sm">
-        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Mission</Text>
-        <Text fw={700}>{mission.name}</Text>
-        <Text size="sm" c="dimmed">{mission.vehicle}</Text>
-        <Text size="sm" c="dimmed">{mission.launchSite.name}</Text>
-        <Group gap={6} mt={6}>
-          <Badge variant="light">{mission.targetOrbit}</Badge>
-          <Badge variant="outline" color="gray">{mission.inclinationDeg}°</Badge>
-        </Group>
-      </Paper>
+      {/* Left: mission input panel is passed in as children */}
+      {children}
 
-      {/* Top-right: countdown */}
+      {/* Top-right: countdown + current mission summary */}
       <Paper className={`${classes.panel} ${classes.topRight}`} p="sm">
         <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Next window</Text>
         <Text className={classes.countdown}>{next ? countdown : '—'}</Text>
+        <Text size="xs" c="dimmed">{mission.launchSite.name}</Text>
+        <Group gap={6} mt={4} justify="flex-end">
+          <Badge size="sm" variant="light">{mission.targetOrbit}</Badge>
+          <Badge size="sm" variant="outline" color="gray">{mission.inclinationDeg}°</Badge>
+          <Badge size="sm" variant="outline" color="gray">{mission.altitudeKm} km</Badge>
+        </Group>
       </Paper>
 
       {/* Bottom: launch windows list */}

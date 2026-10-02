@@ -5,7 +5,9 @@ Route: `/mission-control`. Full team guide: **`/HANDOFF.md`** at the repo root.
 ```
 features/mission-control/
 ├── SceneViewport.jsx         ★ 3D scene goes here (fills the whole page). Search "TODO(3D)"
-├── HudOverlay.jsx            ← 2D panels on top (mission info, countdown, windows)
+├── HudOverlay.jsx            ← 2D panels on top (countdown, windows)
+├── MissionInputPanel.jsx     ← collapsible input panel on the left (site, orbit, inclination, altitude)
+├── launchConfig.js           ← the 2 launch sites + orbit presets
 ├── MissionControl.module.css ← styles for both
 └── mockData.js               ← PLACEHOLDER fake API responses
 ```
@@ -46,7 +48,7 @@ Return a cleanup function that disposes the renderer.
 
 | prop         | shape |
 |--------------|-------|
-| `mission`    | `{ name, vehicle, launchSite: {id, name, lat, lon}, targetOrbit, inclinationDeg }` |
+| `mission`    | `{ name, vehicle, launchSite: {id, name, lat, lon}, targetOrbit, inclinationDeg, altitudeKm }` |
 | `windows`    | `[{ id, opensAt (ISO), durationMin, weather: 'green'\|'yellow'\|'red' }]` |
 | `selectedId` | id of the selected window |
 | `onSelect`   | `(id) => void`, to select a window from the 3D side |
