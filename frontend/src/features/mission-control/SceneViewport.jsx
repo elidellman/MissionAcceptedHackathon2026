@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import moonSurface from '../../assets/moonSurface.jpg'
 import sunSurface from '../../assets/sunSurface.jpg'
 import { LAUNCH_SITES } from './launchConfig.js'
+import { rgba } from '@mantine/core'
 
 const EARTH_R = 6371
 const ALT_SCALE = 1
@@ -411,14 +412,41 @@ export default function SceneViewport({
 
     const markers = []
     LAUNCH_SITES.forEach((launchSite) => {
-      markers.push({
+    
+
+      // Add a smaller dark dot when this site is the active target base
+      if (launchSite.id === activeTargetBase.id) {
+        markers.push({
         id: launchSite.id,
-        type: 'launchsite',
+        type: 'launchsite-interactive',
+        name: launchSite.name,
+        lat: launchSite.lat,
+        lng: launchSite.lon,
+        alt: 0,
+        color: 'yellow',
+        
+        })
+        markers.push({
+        id: launchSite.id,
+        type: 'launchsite-selected',
+        name: launchSite.name,
+        lat: launchSite.lat,
+        lng: launchSite.lon,
+        alt: 0,
+        color: 'black',
+        
+        })
+      }else{
+        markers.push({
+        id: launchSite.id,
+        type: 'launchsite-interactive',
+        name: launchSite.name,
         lat: launchSite.lat,
         lng: launchSite.lon,
         alt: 0,
         color: 'white',
       })
+      }
     })
 
     const last = ascent[ascent.length - 1]
@@ -448,10 +476,10 @@ export default function SceneViewport({
       .pointLng(d => d.lng)
       .pointAltitude(d => d.alt)
       .pointLabel(d => d.name)
-      .pointRadius(0.5)
+      .pointRadius(d => (d.type === 'launchsite-interactive' ? 1.5 : d.type === 'launchsite-selected' ? 1.0 : 0.5))
       .pointColor(d => d.color)
       .onPointClick((point, event, coords) => {
-        if (!coords || point?.type !== 'launchsite') return
+        if (!coords || point?.type !== 'launchsite-interactive') return
 
         const clickedSite = LAUNCH_SITES.find((site) => site.id === point.id)
         if (!clickedSite) return
