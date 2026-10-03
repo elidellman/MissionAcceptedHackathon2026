@@ -4,12 +4,82 @@ import Globe from 'globe.gl'
 import * as THREE from 'three'
 import moonSurface from '../../assets/moonSurface.jpg'
 import sunSurface from '../../assets/sunSurface.jpg'
-import { LAUNCH_SITES } from './launchConfig.js'
+import { ISS, LAUNCH_SITES } from './launchConfig.js'
 import { rgba } from '@mantine/core'
 
 const EARTH_R = 6371
 const ALT_SCALE = 1
 const altFrac = km => (km / EARTH_R) * ALT_SCALE
+
+/* ── ISS: live position + ground track from wheretheiss.at (free, no key, ~1 request/sec limit) ── */
+const ISS_API = `https://api.wheretheiss.at/v1/satellites/${ISS.noradId}`
+const ISS_POSITION_EVERY_MS = 15000 // marker refresh (every 15 s)
+const ISS_TRACK_EVERY_MS = 5 * 60 * 1000 // orbit track refresh
+
+async function fetchIssPosition() {
+  const res = await fetch(ISS_API)
+  if (!res.ok) throw new Error(`ISS position ${res.status}`)
+  return res.json() // { latitude, longitude, altitude (km), velocity (km/h), ... }
+}
+
+/** One orbit (~92 min) of ground track: 20 points, 5 min apart, from 50 min ago to 45 min ahead. */
+async function fetchIssTrack() {
+  const now = Math.floor(Date.now() / 1000)
+  const stamps = Array.from({ length: 20 }, (_, k) => now + (k - 10) * 300)
+  const get = async (ts) => {
+    const res = await fetch(`${ISS_API}/positions?timestamps=${ts.join(',')}&units=kilometers`)
+    if (!res.ok) throw new Error(`ISS track ${res.status}`)
+    return res.json()
+  }
+  const first = await get(stamps.slice(0, 10)) // API allows max 10 timestamps per request
+  await new Promise((r) => setTimeout(r, 1100)) // stay under the rate limit
+  const second = await get(stamps.slice(10))
+  return [...first, ...second].map((p) => ({ lat: p.latitude, lng: p.longitude, alt: altFrac(p.altitude) }))
+}
+
+/** Small station model: white body with two blue solar panels. */
+function makeIssObject() {
+  const group = new THREE.Group()
+  group.add(new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), new THREE.MeshBasicMaterial({ color: '#ffffff' })))
+  const panelMat = new THREE.MeshBasicMaterial({ color: '#4fc3f7', side: THREE.DoubleSide })
+  ;[-1, 1].forEach((side) => {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.15, 1.1), panelMat)
+    panel.position.x = side * 2
+    group.add(panel)
+  })
+  return group
+}
+
+/**
+ * 3D star field: random points on a shell far beyond the Sun, so they surround the whole scene
+ * and turn with the camera. Sizes are in screen pixels, so stars stay crisp at any zoom.
+ */
+function makeStarField(radius, count = 4000) {
+  const positions = new Float32Array(count * 3)
+  const colors = new Float32Array(count * 3)
+  const tints = [
+    [1, 1, 1], // white
+    [0.75, 0.85, 1], // blue-white
+    [1, 0.93, 0.8], // warm
+  ]
+  for (let n = 0; n < count; n++) {
+    // uniform direction on a sphere, with a little depth variation
+    const u = Math.random() * 2 - 1
+    const theta = Math.random() * Math.PI * 2
+    const r = radius * (1 + Math.random() * 0.3)
+    const s = Math.sqrt(1 - u * u)
+    positions.set([r * s * Math.cos(theta), r * u, r * s * Math.sin(theta)], n * 3)
+
+    const brightness = 0.35 + Math.random() ** 3 * 0.65 // mostly faint, a few bright
+    const tint = tints[Math.floor(Math.random() * tints.length)]
+    colors.set(tint.map((c) => c * brightness), n * 3)
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  const material = new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, depthWrite: false })
+  return new THREE.Points(geometry, material)
+}
 
 function orbitPoints({ altKm, inclinationDeg, raanDeg = 0, steps = 180 }) {
   const i = (inclinationDeg * Math.PI) / 180
@@ -189,6 +259,7 @@ export default function SceneViewport({
   draftParams,
   onTargetBaseChange,
   onLaunchSiteClick,
+  onIssClick,
 }) {
   const containerRef = useRef(null)
   const globeRef = useRef(null)
@@ -201,6 +272,53 @@ export default function SceneViewport({
   // Latest click callback, kept in a ref so the globe effect doesn't need to re-run when it changes
   const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
   onLaunchSiteClickRef.current = onLaunchSiteClick
+  const onIssClickRef = useRef(onIssClick)
+  onIssClickRef.current = onIssClick
+
+  // Mission layers (ascent, target orbit, intersection) and ISS layers are kept separately,
+  // so the ISS can refresh every few seconds without redrawing the mission or moving the camera.
+  const missionLayers = useRef({ paths: [], objects: [] })
+  const issData = useRef({ position: null, track: [] })
+
+  const applyLayers = () => {
+    const globe = globeInstance.current
+    if (!globe) return
+    const { position, track } = issData.current
+    // Track points 0–10 are the past 50 min, 10–19 the next 45 min (see fetchIssTrack).
+    // Past = solid fading trail, ahead = bright animated dashes flowing in the direction of travel.
+    const issPaths =
+      track.length > 1
+        ? [
+            {
+              name: 'ISS orbit (past)',
+              pts: position ? [...track.slice(0, 11), { lat: position.latitude, lng: position.longitude, alt: altFrac(position.altitude) }] : track.slice(0, 11),
+              color: ['rgba(0, 200, 255, 0.05)', 'rgba(0, 200, 255, 0.9)'], // fades in towards the station
+              stroke: 1.4,
+            },
+            {
+              name: 'ISS orbit (ahead)',
+              pts: position ? [{ lat: position.latitude, lng: position.longitude, alt: altFrac(position.altitude) }, ...track.slice(10)] : track.slice(10),
+              color: ['#7ff3ff', 'rgba(127, 243, 255, 0.35)'],
+              stroke: 1.8,
+              dashLength: 0.04,
+              dashGap: 0.02,
+              dashAnimateTime: 12000, // ms for a dash to travel the whole path (higher = slower)
+            },
+          ]
+        : []
+    const issObjects = position
+      ? [{
+          id: ISS.id,
+          type: 'iss',
+          name: `${ISS.name} · ${Math.round(position.altitude)} km up · ${Math.round(position.velocity).toLocaleString()} km/h (click for live video)`,
+          lat: position.latitude,
+          lng: position.longitude,
+          alt: altFrac(position.altitude),
+        }]
+      : []
+    globe.pathsData([...missionLayers.current.paths, ...issPaths])
+    globe.objectsData([...missionLayers.current.objects, ...issObjects])
+  }
 
   useEffect(() => {
     const el = containerRef.current
@@ -297,6 +415,16 @@ export default function SceneViewport({
 
     globe.scene().add(sun)
     globe.scene().add(moon)
+
+    // Star field around everything (Sun sits at 18 Earth radii, stars start at 30)
+    const stars = makeStarField(earthRadius * 30)
+    globe.scene().add(stars)
+    // Make sure the camera can see that far
+    const camera = globe.camera()
+    if (camera.far < earthRadius * 45) {
+      camera.far = earthRadius * 45
+      camera.updateProjectionMatrix()
+    }
 
     shellMeshes.current = {
       leo: orbitShell(globe, {
@@ -396,17 +524,19 @@ export default function SceneViewport({
 
     const paths = [{ name: 'Ascent Path', pts: ascent, color: 'red', stroke: 2 }, ...orbits]
 
-    globe.pathsData([])
     globe.pointsData([])
 
     globe
-      .pathsData(paths)
       .pathPoints(d => d.pts)
       .pathPointLat(p => p.lat)
       .pathPointLng(p => p.lng)
       .pathPointAlt(p => p.alt)
       .pathColor(d => d.color)
       .pathStroke(d => d.stroke)
+      .pathDashLength(d => d.dashLength ?? 1) // solid unless a path sets dashes (ISS orbit ahead)
+      .pathDashGap(d => d.dashGap ?? 0)
+      .pathDashAnimateTime(d => d.dashAnimateTime ?? 0)
+      .pathTransitionDuration(0) // the ISS line refreshes often; don't animate between updates
       .pathResolution(1)
 
     // The selected site in the Mission Inputs panel wins; clicks on the globe update it via onTargetBaseChange
@@ -500,21 +630,63 @@ export default function SceneViewport({
         if (globeRef.current) globeRef.current.style.cursor = point?.type?.startsWith('launchsite') ? 'pointer' : ''
       })
 
-          // true dot for the intersection
-      .objectsData([intersectionPoint])
+      // 3D objects: the intersection dot, plus the ISS (added in applyLayers)
       .objectLat(d => d.lat)
       .objectLng(d => d.lng)
       .objectAltitude(d => d.alt)
       .objectLabel(d => d.name)
       .objectThreeObject(d =>
-        new THREE.Mesh(
-          new THREE.SphereGeometry(1, 16, 16), // radius in globe units (globe radius = 100)
-          new THREE.MeshBasicMaterial({ color: d.color })
-        )
-      );
+        d.type === 'iss'
+          ? makeIssObject()
+          : new THREE.Mesh(
+              new THREE.SphereGeometry(1, 16, 16), // radius in globe units (globe radius = 100)
+              new THREE.MeshBasicMaterial({ color: d.color })
+            )
+      )
+      .onObjectClick((obj) => {
+        if (obj?.type === 'iss') onIssClickRef.current?.()
+      })
+      .onObjectHover((obj) => {
+        if (globeRef.current) globeRef.current.style.cursor = obj?.type === 'iss' ? 'pointer' : ''
+      })
+
+    missionLayers.current = { paths, objects: [intersectionPoint] }
+    applyLayers()
 
     globe.pointOfView({ lat: activeTargetBase.lat, lng: activeTargetBase.lon }, 2000)
   }, [mission, trajectory, draftParams, targetBase, onTargetBaseChange])
+
+  // ISS: poll the live position, refresh the orbit track every few minutes
+  useEffect(() => {
+    let cancelled = false
+    const updatePosition = () =>
+      fetchIssPosition()
+        .then((position) => {
+          if (cancelled) return
+          issData.current.position = position
+          applyLayers()
+        })
+        .catch((e) => console.warn('ISS position unavailable:', e.message))
+    const updateTrack = () =>
+      fetchIssTrack()
+        .then((track) => {
+          if (cancelled) return
+          issData.current.track = track
+          applyLayers()
+        })
+        .catch((e) => console.warn('ISS track unavailable:', e.message))
+
+    updatePosition()
+    const trackDelay = setTimeout(updateTrack, 1200) // spaced out for the API's rate limit
+    const positionTimer = setInterval(updatePosition, ISS_POSITION_EVERY_MS)
+    const trackTimer = setInterval(updateTrack, ISS_TRACK_EVERY_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(trackDelay)
+      clearInterval(positionTimer)
+      clearInterval(trackTimer)
+    }
+  }, [])
 
   return (
     <div ref={containerRef} className={classes.viewport}>

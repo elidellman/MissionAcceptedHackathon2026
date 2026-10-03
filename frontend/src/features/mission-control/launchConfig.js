@@ -32,6 +32,19 @@ export const LAUNCH_SITES = [
   },
 ]
 
+// International Space Station: live position + orbit on the globe, live video when clicked
+export const ISS = {
+  id: 'iss',
+  name: 'International Space Station',
+  noradId: 25544, // used by the wheretheiss.at position API
+  liveFeed: {
+    title: 'ISS Live · NASA',
+    // NASA's "Live High-Definition Views from the ISS". If NASA restarts the stream the id changes:
+    // copy the new id from youtube.com/@NASA/live
+    embedUrl: 'https://www.youtube.com/embed/awQzjn72bI0?autoplay=1&mute=1&playsinline=1&rel=0',
+  },
+}
+
 // Inclination + altitude per orbit type. Each preset uses the midpoint of its range
 // as the default values when the user picks that orbit.
 export const ORBIT_PRESETS = {
