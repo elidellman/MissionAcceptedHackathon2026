@@ -83,12 +83,14 @@ Params:
 def get_AdjustedAzimuth(azimuth, vehicleDuration=None):
     if azimuth is None:
         return None
-    
+
     if vehicleDuration is None:
         return azimuth
 
-    adjusted_azimuth = azimuth - (EARTH_ROTATION_RATE * vehicleDuration)
-    return adjusted_azimuth
+    rotation_rad = EARTH_ROTATION_RATE * vehicleDuration
+    rotation_deg = math.degrees(rotation_rad)
+
+    return azimuth - rotation_deg
 
 """
 Plane intersections are the points where the orbital plane intersects with the Earth's surface.
@@ -215,7 +217,15 @@ Params:
     numberOfWindows [int]: The number of windows to calculate.
 """
 
-def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10, end_time=None):
+def get_window_times(
+    launchSite,
+    inclination,
+    raan,
+    current_time,
+    window_minutes=10,
+    end_time=None,
+    vehicle_duration=0
+):
     intersections = get_plane_intersections(
         launchSite,
         inclination,
@@ -233,6 +243,7 @@ def get_window_times(launchSite, inclination, raan, current_time, window_minutes
         next_times = []
 
         for intersection in intersections.values():
+
             intersection_time = get_intersection_time(
                 launchSite,
                 intersection,
@@ -246,13 +257,28 @@ def get_window_times(launchSite, inclination, raan, current_time, window_minutes
         if end_time is not None and next_time > end_time:
             break
 
+        # The orbital-plane alignment occurs when the vehicle
+        # reaches the insertion point.
+        insertion_time = next_time
+
+        # If the vehicle takes 480 seconds to reach insertion,
+        # liftoff must happen 480 seconds earlier.
+        launch_time = (
+            insertion_time
+            - timedelta(seconds=vehicle_duration)
+        )
+
         window = create_window(
-            next_time,
+            launch_time,
             window_minutes
         )
 
+        # Keep the actual insertion/alignment time too.
+        window["insertion"] = insertion_time
+
         windows.append(window)
 
+        # Search for the next orbital-plane crossing.
         search_time = next_time + timedelta(seconds=1)
 
     return windows

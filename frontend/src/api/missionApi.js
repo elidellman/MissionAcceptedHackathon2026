@@ -52,6 +52,8 @@ export async function fetchLaunchWindows({
   inclinationDeg,
   altitudeKm,
   days,
+  raanDeg,
+  vehicleDurationSec,
 }) {
   const query = {
     site_id: siteId,
@@ -59,6 +61,22 @@ export async function fetchLaunchWindows({
     inclination_deg: String(inclinationDeg),
     altitude_km: String(altitudeKm),
     days: String(days),
+  }
+
+  if (
+    raanDeg !== null &&
+    raanDeg !== undefined &&
+    raanDeg !== ''
+  ) {
+    query.raan = String(raanDeg)
+  }
+
+  if (
+    vehicleDurationSec !== null &&
+    vehicleDurationSec !== undefined &&
+    vehicleDurationSec !== ''
+  ) {
+    query.vehicle_duration = String(vehicleDurationSec)
   }
 
   let data
@@ -93,24 +111,25 @@ export async function fetchTrajectory(windowId) {
 
 const toSite = (s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon })
 
-function toMission(mission) {
-  return {
-    name: mission.name,
-    vehicle: mission.vehicle,
-    launchSite: mission.launch_site,
-    targetOrbit: mission.target_orbit,
-    inclinationDeg: mission.inclination_deg,
-    altitudeKm: mission.altitude_km,
-    azimuthDeg: mission.azimuth_deg,
-    reachable: mission.reachable,
-  }
-}
+const toMission = (m) => ({
+  name: m.name,
+  vehicle: m.vehicle,
+  launchSite: toSite(m.launch_site),
+  targetOrbit: m.target_orbit,
+  inclinationDeg: m.inclination_deg,
+  altitudeKm: m.altitude_km,
+  azimuthDeg: m.azimuth_deg,
+  raanDeg: m.raan_deg,
+  vehicleDurationSec: m.vehicle_duration_sec,
+})
 
 const toWindow = (w) => ({
   id: w.id,
-  opensAt: w.opens_at, // ISO 8601 UTC string
+  opensAt: w.opens_at,
+  peakAt: w.peak_at,
+  insertionAt: w.insertion_at,
   durationMin: w.duration_min,
-  weather: w.weather, // 'green' | 'yellow' | 'red'
+  weather: w.weather,
 })
 
 const toPoint = (p) => ({ tSec: p.t_sec, lat: p.lat, lon: p.lon, altKm: p.alt_km })

@@ -35,12 +35,30 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
     if (onPreviewChange) onPreviewChange(next)
   }
 
+  const updateOptionalNumericValue = (key, value) => {
+    const next = {
+      ...params,
+      [key]: value === '' || value === null ? '' : Number(value),
+    }
+
+    if (onPreviewChange) onPreviewChange(next)
+  }
+
   const commitDraft = (nextDraft) => {
     const normalized = {
       ...nextDraft,
       inclinationDeg: Number(nextDraft.inclinationDeg),
       altitudeKm: Number(nextDraft.altitudeKm),
       days: Number(nextDraft.days),
+      raanDeg:
+        nextDraft.raanDeg === '' || nextDraft.raanDeg == null
+          ? ''
+          : Number(nextDraft.raanDeg),
+
+      vehicleDurationSec:
+        nextDraft.vehicleDurationSec === '' || nextDraft.vehicleDurationSec == null
+          ? ''
+          : Number(nextDraft.vehicleDurationSec),
     }
 
     delete normalized.launchSite
@@ -155,6 +173,31 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
               onChange={(value) => updateNumericValue('days', value)}
               min={1}
               max={30}
+            />
+
+            <NumberInput
+              label="RAAN (°)"
+              description="Optional target orbital plane orientation"
+              value={params.raanDeg ?? ''}
+              onChange={(value) =>
+                updateOptionalNumericValue('raanDeg', value)
+              }
+              min={0}
+              max={360}
+              step={0.1}
+              placeholder="Optional"
+            />
+
+            <NumberInput
+              label="Vehicle duration (seconds)"
+              description="Time from liftoff to orbital insertion"
+              value={params.vehicleDurationSec ?? ''}
+              onChange={(value) =>
+                updateOptionalNumericValue('vehicleDurationSec', value)
+              }
+              min={0}
+              step={1}
+              placeholder="Optional"
             />
 
             {!reachable && Number.isFinite(incl) && (

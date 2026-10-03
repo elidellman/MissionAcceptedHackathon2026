@@ -1,8 +1,8 @@
 import time
 from datetime import datetime, timedelta, timezone
 
-from launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
-from lib_Calculations import (
+from backend.launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
+from backend.lib_Calculations import (
     OrbitTypes,
     get_Azimuth,
     get_AdjustedAzimuth,
@@ -78,7 +78,8 @@ def calculate_launch_windows(
             raan,
             current_time,
             10,
-            end_time
+            end_time,
+            vehicle_duration or 0
         )
 
     # Check existing launches

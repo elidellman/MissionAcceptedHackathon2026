@@ -3,10 +3,10 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, request
-from Calculations import calculate_launch_windows
-from lib_Calculations import LaunchSites, get_plane_intersections
-from weather import rate_windows
-from debris import screen, screen_path
+from backend.Calculations import calculate_launch_windows
+from backend.lib_Calculations import LaunchSites, OrbitTypes, get_plane_intersections
+from backend.weather import rate_windows
+from backend.debris import screen, screen_path
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,8 +123,11 @@ def create_app(test_config=None):
                 "duration_min": round((w["end"] - w["start"]).total_seconds() / 60),
                 "weather": rating,
             }
-            if "peak" in w:  # advanced (RAAN) mode has an exact alignment time
+            if "peak" in w:
                 window["peak_at"] = iso_utc(w["peak"])
+
+            if "insertion" in w:
+                window["insertion_at"] = iso_utc(w["insertion"])
             windows.append(window)
 
         return jsonify({
@@ -137,6 +140,8 @@ def create_app(test_config=None):
                 "altitude_km": altitude_km,
                 "azimuth_deg": result["azimuth"],
                 "reachable": reachable,
+                "raan_deg": raan,
+                "vehicle_duration_sec": vehicle_duration or 0,
             },
             "windows": windows,
         })
@@ -151,7 +156,6 @@ def create_app(test_config=None):
             site_id, orbit, altitude_km, _ = window_id.split('_')
             site = site_json(site_id)
             altitude_km = float(altitude_km)
-            from lib_Calculations import OrbitTypes
             inclination = OrbitTypes[ORBITS[orbit]]["inclination"]
         except (ValueError, KeyError):
             return error(f"Unknown window id '{window_id}'", 404)

@@ -793,10 +793,21 @@ function getAscent(
   const parsedAzimuth =
     Number(azimuthDeg)
 
-  const azimuth =
+  const azimuthOffset =
     Number.isFinite(parsedAzimuth)
       ? parsedAzimuth
-      : 90
+      : 0
+
+  /*
+   * The backend returns azimuth as a signed offset from the launch
+   * direction, not as a compass bearing. Retrograde inclinations use
+   * the opposite launch hemisphere, so convert them to the bearing
+   * expected by the local north/east basis before deriving the plane.
+   */
+  const azimuth =
+    targetInclinationDeg > 90
+      ? 180 - azimuthOffset
+      : azimuthOffset
 
   /*
    * Derive the actual orbital geometry from the launch
