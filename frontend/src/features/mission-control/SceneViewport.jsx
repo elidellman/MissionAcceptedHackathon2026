@@ -188,6 +188,7 @@ export default function SceneViewport({
   shellsVisible = { leo: false, polar: false, sso: false },
   draftParams,
   onTargetBaseChange,
+  onLaunchSiteClick,
 }) {
   const containerRef = useRef(null)
   const globeRef = useRef(null)
@@ -196,6 +197,10 @@ export default function SceneViewport({
   const lastDrawRef = useRef('')
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [targetBase, setTargetBase] = useState(null)
+
+  // Latest click callback, kept in a ref so the globe effect doesn't need to re-run when it changes
+  const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
+  onLaunchSiteClickRef.current = onLaunchSiteClick
 
   useEffect(() => {
     const el = containerRef.current
@@ -404,9 +409,10 @@ export default function SceneViewport({
       .pathStroke(d => d.stroke)
       .pathResolution(1)
 
+    // The selected site in the Mission Inputs panel wins; clicks on the globe update it via onTargetBaseChange
     const activeTargetBase =
-      targetBase ||
       (draftParams && draftParams.siteId && LAUNCH_SITES.find((s) => s.id === draftParams.siteId)) ||
+      targetBase ||
       mission?.launchSite ||
       LAUNCH_SITES[0]
 
@@ -479,14 +485,19 @@ export default function SceneViewport({
       .pointRadius(d => (d.type === 'launchsite-interactive' ? 1.5 : d.type === 'launchsite-selected' ? 1.0 : 0.5))
       .pointColor(d => d.color)
       .onPointClick((point, event, coords) => {
-        if (!coords || point?.type !== 'launchsite-interactive') return
+        if (!coords || !point?.type?.startsWith('launchsite')) return
 
         const clickedSite = LAUNCH_SITES.find((site) => site.id === point.id)
         if (!clickedSite) return
 
         setTargetBase(clickedSite)
         if (onTargetBaseChange) onTargetBaseChange(clickedSite)
+        onLaunchSiteClickRef.current?.(clickedSite)
         globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
+      })
+      .onPointHover((point) => {
+        // Launch sites are clickable (Cape Canaveral opens its live feed)
+        if (globeRef.current) globeRef.current.style.cursor = point?.type?.startsWith('launchsite') ? 'pointer' : ''
       })
 
           // true dot for the intersection

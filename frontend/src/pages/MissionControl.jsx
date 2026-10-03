@@ -3,7 +3,7 @@ import { Center, Loader, Text } from '@mantine/core'
 import SceneViewport from '../features/mission-control/SceneViewport.jsx'
 import HudOverlay from '../features/mission-control/HudOverlay.jsx'
 import MissionInputPanel from '../features/mission-control/MissionInputPanel.jsx'
-import { DEFAULT_PARAMS } from '../features/mission-control/launchConfig.js'
+import { DEFAULT_PARAMS, getSite } from '../features/mission-control/launchConfig.js'
 import { fetchLaunchWindows, fetchTrajectory } from '../api/missionApi.js'
 import classes from '../features/mission-control/MissionControl.module.css'
 
@@ -29,6 +29,14 @@ export default function MissionControl() {
   const [trajectory, setTrajectory] = useState([])
   const [error, setError] = useState(null)
   const [shellsVisible, setShellsVisible] = useState({ leo: false, polar: false, sso: false })
+  // Launch site whose live feed is open (set by clicking a site that has `liveFeed` on the globe)
+  const [liveFeedSite, setLiveFeedSite] = useState(null)
+
+  // If a live feed is open, keep it on the selected site (dropdown change, globe click or Calculate)
+  useEffect(() => {
+    const site = getSite(previewParams.siteId)
+    setLiveFeedSite((current) => (current ? (site?.liveFeed ? site : null) : null))
+  }, [previewParams.siteId])
 
   // 2. mission + windows, re-run whenever the user submits a real mission change
   useEffect(() => {
@@ -88,8 +96,9 @@ export default function MissionControl() {
             siteId: nextTarget.id,
           }))
         }}
+        onLaunchSiteClick={(site) => setLiveFeedSite(site.liveFeed ? site : null)}
       />
-      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible}>
+      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible} liveFeedSite={liveFeedSite} onCloseLiveFeed={() => setLiveFeedSite(null)}>
         <MissionInputPanel
           params={previewParams}
           onPreviewChange={setPreviewParams}

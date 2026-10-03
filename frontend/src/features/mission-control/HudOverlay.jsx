@@ -1,6 +1,6 @@
 import { VIEWING_SPOTS } from './viewingSpotsData.js'
 import ViewingSpots from './ViewingSpots'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Badge, Button, Group, Paper, Stack, Text, UnstyledButton } from '@mantine/core'
 import classes from './MissionControl.module.css'
 
@@ -24,7 +24,22 @@ function useCountdown(targetIso) {
 
 // Weather colour comes straight from the backend (`weather` on each window) — the frontend doesn't compute it.
 // The left side is the MissionInputPanel (rendered by pages/MissionControl.jsx), not part of this file.
-export default function HudOverlay({ mission, windows, selectedId, onSelect, shellsVisible, onShellsChange, children }) {
+/** Width of an element, kept up to date as it resizes. */
+function useWidth(ref) {
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.borderBoxSize?.[0]?.inlineSize ?? el.offsetWidth))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
+}
+
+export default function HudOverlay({ mission, windows, selectedId, onSelect, shellsVisible, onShellsChange, liveFeedSite, onCloseLiveFeed, children }) {
+  const topRightRef = useRef(null)
+  const topRightWidth = useWidth(topRightRef)
   console.log('launchSite:', mission.launchSite)
 
   const [windowsOpen, setWindowsOpen] = useState(true)
@@ -42,7 +57,7 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
       {children}
 
       {/* Top-right: countdown + current mission summary */}
-      <Paper className={`${classes.panel} ${classes.topRight}`} p="sm">
+      <Paper ref={topRightRef} className={`${classes.panel} ${classes.topRight}`} p="sm">
         <Text size="xs" c="dimmed" tt="uppercase" fw={700} ta="center">Next window</Text>
         <Text className={classes.countdown} ta="center">{next ? countdown : '—'}</Text>
         <Text size="xs" c="dimmed" ta="center">{mission.launchSite.name}</Text>
@@ -85,6 +100,27 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
         </Stack>
         <ViewingSpots spots={VIEWING_SPOTS[mission.launchSite.id] ?? []} />
       </Paper>
+
+      {/* Top-right, left of the countdown panel: live feed of the clicked launch site */}
+      {liveFeedSite?.liveFeed && (
+        <div className={classes.liveFeed} style={{ right: 12 + topRightWidth + 12 }}>
+          <div className={classes.liveFeedHeader}>
+            <span className={classes.liveDot} />
+            <span className={classes.liveFeedTitle}>{liveFeedSite.liveFeed.title || liveFeedSite.name}</span>
+            <button type="button" className={classes.liveFeedClose} onClick={onCloseLiveFeed} aria-label="Close live feed">
+              ×
+            </button>
+          </div>
+          <iframe
+            key={liveFeedSite.id}
+            className={classes.liveFeedVideo}
+            src={liveFeedSite.liveFeed.embedUrl}
+            title={liveFeedSite.liveFeed.title || `${liveFeedSite.name} live feed`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      )}
 
       {/* Bottom: launch windows list */}
       <Paper className={`${classes.panel} ${classes.bottom}`} p="sm">

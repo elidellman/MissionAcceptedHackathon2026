@@ -8,6 +8,14 @@ export const LAUNCH_SITES = [
     region: 'Canso, NS, Canada',
     lat: 45.3031, // 45°18'11" N
     lon: -60.9828, // 60°58'58" W
+    // No public pad camera exists yet, so show live weather over the site (Windy.com embed)
+    liveFeed: {
+      title: 'Live weather · Spaceport Nova Scotia',
+      embedUrl:
+        'https://embed.windy.com/embed2.html?lat=45.303&lon=-60.983&detailLat=45.303&detailLon=-60.983' +
+        '&zoom=7&level=surface&overlay=wind&product=ecmwf&menu=&message=true&marker=true&calendar=now' +
+        '&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1',
+    },
   },
   {
     id: 'cape-canaveral',
@@ -15,6 +23,12 @@ export const LAUNCH_SITES = [
     region: 'Florida, USA',
     lat: 28.5618,
     lon: -80.577,
+    // Live feed shown top-right when this site is clicked on the globe
+    // (YouTube: Launch Pad Live, SpaceX Falcon Heavy, Falcon 9 and Starship at Cape Canaveral)
+    liveFeed: {
+      title: 'Launch Pad Live · Cape Canaveral',
+      embedUrl: 'https://www.youtube.com/embed/thfYPsRqxmw?autoplay=1&mute=1&playsinline=1&rel=0',
+    },
   },
 ]
 

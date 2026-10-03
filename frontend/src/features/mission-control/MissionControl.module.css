@@ -170,3 +170,64 @@
   padding: 6px 12px;
   border-radius: 8px;
 }
+
+/* ── Live feed (opens when a launch site is clicked) ─────── */
+.liveFeed {
+  position: absolute;
+  top: 12px; /* lines up with the countdown panel; `right` is set inline from that panel's width */
+  width: 320px;
+  max-width: calc(100% - 24px);
+  pointer-events: auto; /* the HUD layer ignores the mouse, so re-enable it here */
+  z-index: 5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(12, 15, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.liveFeedHeader {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 10px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  box-shadow: 0 0 6px #ff4d4f;
+  flex: none;
+}
+
+.liveFeedTitle {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.liveFeedClose {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.liveFeedClose:hover { color: #fff; }
+
+.liveFeedVideo {
+  display: block;
+  width: 100%;
+  height: 180px;
+  border: 0;
+}
