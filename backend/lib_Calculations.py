@@ -43,7 +43,6 @@ LaunchSites = {
 }
 
 
-
 """
 Azimuth is the horizontal Mesaurement needed to reach specific inclination
 It is defined as arcsin(cos(Inclination)/cos(Latitude))
