@@ -1,0 +1,145 @@
+/* Page root: scene underneath, HUD on top */
+.root {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Scene ───────────────────────────────────────────── */
+.viewport {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, #0d1424 0%, #05070c 70%),
+    #05070c;
+}
+
+/* Make whatever canvas gets mounted fill the viewport */
+.viewport canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  padding: 16px;
+  border: 2px dashed rgba(255, 255, 255, 0.08);
+  margin: 12px;
+  border-radius: 12px;
+}
+
+.globe {
+  width: min(32vmin, 260px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  margin-bottom: 16px;
+  background: radial-gradient(circle at 35% 30%, #3b82c4, #123a66 55%, #061424 100%);
+  box-shadow: 0 0 60px rgba(59, 130, 196, 0.35);
+}
+
+.placeholderTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.placeholderMeta {
+  margin: 0;
+  font-size: 0.8rem;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* ── HUD ─────────────────────────────────────────────── */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* let the 3D scene receive drag/zoom */
+  padding: 12px;
+}
+
+.panel {
+  position: absolute;
+  pointer-events: auto;
+  background: rgba(12, 15, 24, 0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Left: Mission inputs panel (sits above the bottom windows bar) */
+.inputPanel {
+  top: 12px;
+  left: 12px;
+  width: 300px;
+  max-width: calc(100% - 24px);
+  z-index: 2;
+}
+
+.panelToggle {
+  top: 12px;
+  left: 12px;
+}
+
+.topRight {
+  top: 12px;
+  right: 12px;
+  text-align: right;
+}
+
+.bottom {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+}
+
+.countdown {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--mantine-color-orange-4);
+}
+
+.windowRow {
+  overflow-x: auto;
+}
+
+.windowCard {
+  flex: 0 0 auto;
+  min-width: 130px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: inherit;
+  text-align: left;
+}
+
+.windowCard[data-selected] {
+  border-color: var(--mantine-color-orange-5);
+  background: rgba(255, 140, 0, 0.08);
+}
+
+@media (max-width: 600px) {
+  .countdown {
+    font-size: 1.1rem;
+  }
+}
+
+.errorBanner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(40, 0, 0, 0.85);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
