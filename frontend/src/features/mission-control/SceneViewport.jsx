@@ -11,6 +11,8 @@ const EARTH_R = 6371
 const ALT_SCALE = 1
 const altFrac = km => (km / EARTH_R) * ALT_SCALE
 
+const DEBRIS_RADIUS_KM = 10 // screening radius around the entry point
+
 /* ── ISS: live position + ground track from wheretheiss.at (free, no key, ~1 request/sec limit) ── */
 const ISS_API = `https://api.wheretheiss.at/v1/satellites/${ISS.noradId}`
 const ISS_POSITION_EVERY_MS = 15000 // marker refresh (every 15 s)
@@ -81,6 +83,7 @@ function makeStarField(radius, count = 4000) {
   return new THREE.Points(geometry, material)
 }
 
+// Ring of lat/lng/alt points for a circular orbit.
 function orbitPoints({ altKm, inclinationDeg, raanDeg = 0, steps = 180 }) {
   const i = (inclinationDeg * Math.PI) / 180
   const raan = (raanDeg * Math.PI) / 180
@@ -130,6 +133,38 @@ function orbitShell(globe, { altMinKm, altMaxKm, maxLatDeg = 90, color, opacity 
   group.add(makeSphere(altMinKm), makeSphere(altMaxKm))
   globe.scene().add(group)
   return group
+}
+
+// NEW: the point of entry into orbit. For now it is the last point of the ascent trajectory,
+// and the time is the selected window's opening plus the ascent duration.
+// When your teammates' real entry point exists, return it from here instead.
+function getEntry(trajectory, windows, selectedId) {
+  if (!trajectory?.length) return null
+  const last = trajectory[trajectory.length - 1]
+  const win = windows?.find(w => w.id === selectedId) ?? windows?.[0]
+  if (!win) return null
+  const time = new Date(new Date(win.opensAt).getTime() + (last.tSec ?? 0) * 1000)
+  return { lat: last.lat, lon: last.lon, altKm: last.altKm, time }
+}
+
+// NEW: a cloud of tiny points floating at lat/lng/altitude.
+function makePoints(globe, items, { size, color, opacity }) {
+  const arr = new Float32Array(items.length * 3)
+  items.forEach(([lat, lng, altKm], i) => {
+    const { x, y, z } = globe.getCoords(lat, lng, altFrac(altKm))
+    arr.set([x, y, z], i * 3)
+  })
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(arr, 3))
+  const material = new THREE.PointsMaterial({
+    size,
+    color,
+    opacity,
+    transparent: true,
+    sizeAttenuation: true,
+    depthWrite: false,
+  })
+  return new THREE.Points(geometry, material)
 }
 
 function getAscent(base, targetInclinationDeg, targetAltitudeKm, steps = 80) {
@@ -256,6 +291,7 @@ export default function SceneViewport({
   onSelect,
   trajectory,
   shellsVisible = { leo: false, polar: false, sso: false },
+  showDebris = true,
   draftParams,
   onTargetBaseChange,
   onLaunchSiteClick,
@@ -268,6 +304,7 @@ export default function SceneViewport({
   const lastDrawRef = useRef('')
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [targetBase, setTargetBase] = useState(null)
+  const [debris, setDebris] = useState(null) // NEW: result from /api/debris
 
   // Latest click callback, kept in a ref so the globe effect doesn't need to re-run when it changes
   const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
@@ -687,6 +724,58 @@ export default function SceneViewport({
       clearInterval(trackTimer)
     }
   }, [])
+
+  // NEW: ask the backend what debris is near the entry point.
+  useEffect(() => {
+    const entry = getEntry(trajectory, windows, selectedId)
+    if (!entry) return
+
+    const ctrl = new AbortController()
+    const qs = new URLSearchParams({
+      lat: entry.lat,
+      lon: entry.lon,
+      alt_km: entry.altKm,
+      time: entry.time.toISOString(),
+      radius_km: DEBRIS_RADIUS_KM,
+    })
+
+    fetch(`/api/debris?${qs}`, { signal: ctrl.signal })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`debris request failed: ${r.status}`))))
+      .then(data => {
+        setDebris(data)
+        console.log('debris check:', data.clear ? 'CLEAR' : `${data.nearby.length} nearby`, data.nearby)
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') console.warn(err)
+      })
+
+    return () => ctrl.abort()
+  }, [trajectory, windows, selectedId])
+
+  // NEW: draw the debris as tiny points (grey-red cloud, plus bright red for anything inside the radius).
+  useEffect(() => {
+    const globe = globeInstance.current
+    if (!globe || !debris || !showDebris) return
+    const scene = globe.scene()
+
+    const group = new THREE.Group()
+    const cloud = debris.cloud.filter(([, , altKm]) => altKm > 100) // drop objects that look already decayed
+    group.add(makePoints(globe, cloud, { size: 0.35, color: '#ff8a80', opacity: 0.7 }))
+
+    if (debris.nearby.length) {
+      const near = debris.nearby.map(d => [d.lat, d.lon, d.alt_km])
+      group.add(makePoints(globe, near, { size: 1.5, color: '#ff1744', opacity: 1 }))
+    }
+
+    scene.add(group)
+    return () => {
+      scene.remove(group)
+      group.traverse(o => {
+        o.geometry?.dispose()
+        o.material?.dispose()
+      })
+    }
+  }, [debris, showDebris])
 
   return (
     <div ref={containerRef} className={classes.viewport}>
