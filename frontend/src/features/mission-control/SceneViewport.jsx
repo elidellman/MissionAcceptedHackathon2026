@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import classes from './MissionControl.module.css'
 import Globe from 'globe.gl'
 import * as THREE from 'three'
+import moonSurface from '../../assets/moonSurface.jpg'
+import sunSurface from '../../assets/sunSurface.jpg'
+import { LAUNCH_SITES } from './launchConfig.js'
+import { rgba } from '@mantine/core'
 
 const EARTH_R = 6371
-const ALT_SCALE = 1 // raise (e.g. 2-3) to exaggerate altitudes; applies to everything
+const ALT_SCALE = 1
 const altFrac = km => (km / EARTH_R) * ALT_SCALE
 
-// Ring of lat/lng/alt points for a circular orbit.
 function orbitPoints({ altKm, inclinationDeg, raanDeg = 0, steps = 180 }) {
   const i = (inclinationDeg * Math.PI) / 180
   const raan = (raanDeg * Math.PI) / 180
@@ -16,13 +19,9 @@ function orbitPoints({ altKm, inclinationDeg, raanDeg = 0, steps = 180 }) {
 
   for (let n = 0; n <= steps; n++) {
     const th = (n / steps) * 2 * Math.PI
-
-    // circle in the orbital plane, tilted by inclination about the x-axis
     const x = Math.cos(th)
     const y = Math.sin(th) * Math.cos(i)
     const z = Math.sin(th) * Math.sin(i)
-
-    // rotate about the polar (z) axis by RAAN
     const xr = x * Math.cos(raan) - y * Math.sin(raan)
     const yr = x * Math.sin(raan) + y * Math.cos(raan)
 
@@ -32,15 +31,14 @@ function orbitPoints({ altKm, inclinationDeg, raanDeg = 0, steps = 180 }) {
       alt,
     })
   }
+
   return pts
 }
 
-// Translucent shell between two altitudes, optionally clipped at the poles.
 function orbitShell(globe, { altMinKm, altMaxKm, maxLatDeg = 90, color, opacity = 0.12, renderOrder = 0 }) {
   const R = globe.getGlobeRadius()
   const radius = km => R * (1 + altFrac(km))
-
-  const thetaStart = ((90 - maxLatDeg) * Math.PI) / 180 // angle from the north pole
+  const thetaStart = ((90 - maxLatDeg) * Math.PI) / 180
   const thetaLength = (2 * maxLatDeg * Math.PI) / 180
 
   const makeSphere = km => {
@@ -64,34 +62,154 @@ function orbitShell(globe, { altMinKm, altMaxKm, maxLatDeg = 90, color, opacity 
   return group
 }
 
-// Placeholder ascent used when no trajectory prop is available.
-const FALLBACK_ASCENT = [
-  { lat: 28.5, lng: -80.6, alt: altFrac(0) }, // launch pad
+function getAscent(base, targetInclinationDeg, targetAltitudeKm, steps = 80) {
+  if (!base) return []
 
-  { lat: 38.0, lng: -64.0, alt: altFrac(400) }, // orbit insertion
-]
+  const launchLat = Number(base.lat) || 0
+  const launchLng = Number(base.lon ?? base.lng) || 0
+  const inclination = Number(targetInclinationDeg) || 0
+  const targetOrbit = orbitPoints({
+    altKm: targetAltitudeKm,
+    inclinationDeg: inclination,
+    raanDeg: 0,
+    steps: 240,
+  })
 
-// eslint-disable-next-line no-unused-vars
-export default function SceneViewport({ mission, windows, selectedId, onSelect, trajectory, shellsVisible = { leo: true, polar: true, sso: true } }) {
+  const normalizeLng = (value) => {
+    let v = value
+    while (v > 180) v -= 360
+    while (v < -180) v += 360
+    return v
+  }
+
+  const initialBearing = (fromLat, fromLng, toLat, toLng) => {
+    const toRad = (deg) => (deg * Math.PI) / 180
+    const toDeg = (rad) => (rad * 180) / Math.PI
+    const lat1 = toRad(fromLat)
+    const lat2 = toRad(toLat)
+    const dLon = toRad(toLng - fromLng)
+    const y = Math.sin(dLon) * Math.cos(lat2)
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)
+    const bearing = Math.atan2(y, x)
+    return (toDeg(bearing) + 360) % 360
+  }
+
+  const desiredHeading = inclination >= 90 ? 270 : 90
+  let end = targetOrbit[0]
+  let bestScore = Number.POSITIVE_INFINITY
+
+  // TODO: replace this heuristic with the backend-calculated launch azimuth once available.
+  // For now, pick the closest orbit point whose bearing is compatible with the launch direction.
+  targetOrbit.forEach((point) => {
+    const bearing = initialBearing(launchLat, launchLng, point.lat, point.lng)
+    const headingDelta = Math.abs(normalizeLng(bearing - desiredHeading))
+    const distance = Math.hypot(point.lat - launchLat, normalizeLng(point.lng - launchLng))
+
+    // Only keep points that are a plausible launch-side intersection.
+    // This avoids choosing a farther orbit point just because it happens to be roughly east/west.
+    const validIntersection = headingDelta <= 90
+    if (!validIntersection) return
+
+    const score = distance + headingDelta * 0.75
+    if (score < bestScore) {
+      bestScore = score
+      end = point
+    }
+  })
+
+  if (!end || Number.isNaN(end.lat) || Number.isNaN(end.lng)) {
+    end = targetOrbit[0] ?? { lat: launchLat, lng: launchLng, alt: altFrac(targetAltitudeKm) }
+  }
+
+  const lerp = (a, b, t) => a + (b - a) * t
+  const lerpLng = (a, b, t) => a + normalizeLng(b - a) * t
+  const cubicBezier = (p0, p1, p2, p3, t) => {
+    const u = 1 - t
+    const tt = t * t
+    const uu = u * u
+    const uuu = uu * u
+    const ttt = tt * t
+
+    return {
+      x: uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+      y: uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y,
+    }
+  }
+
+  const ascent = []
+  const D = Math.max(
+    12,
+    Math.hypot(end.lat - launchLat, normalizeLng(end.lng - launchLng)) * 2.2
+  )
+  const H = Math.max(targetAltitudeKm, 250)
+
+  // Cubic Bézier ascent model:
+  // The final point must meet the target orbit altitude exactly, not overshoot it.
+  // P0 = (0, 0) at the launch site
+  // P1 = (0.12D, 0.18H) early vertical climb
+  // P2 = (0.65D, 0.82H) curve toward the target orbit
+  // P3 = (D, targetAltitudeKm) orbit intersection
+  const P0 = { x: 0, y: 0 }
+  const P1 = { x: D * 0.12, y: H * 0.18 }
+  const P2 = { x: D * 0.68, y: Math.min(H * 0.82, targetAltitudeKm) }
+  const P3 = { x: D, y: targetAltitudeKm }
+
+  for (let n = 0; n <= steps; n++) {
+    const t = n / steps
+    const u = 1 - t
+    const tt = t * t
+    const uu = u * u
+    const uuu = uu * u
+    const ttt = tt * t
+
+    const curvePoint = {
+      x: uuu * P0.x + 3 * uu * t * P1.x + 3 * u * tt * P2.x + ttt * P3.x,
+      y: uuu * P0.y + 3 * uu * t * P1.y + 3 * u * tt * P2.y + ttt * P3.y,
+    }
+
+    const xProgress = Math.min(1, Math.max(0, curvePoint.x / D))
+    const lat = lerp(launchLat, end.lat, xProgress)
+    const lng = lerpLng(launchLng, end.lng, xProgress)
+    const alt = altFrac(curvePoint.y)
+
+    ascent.push({ lat, lng, alt })
+  }
+
+  return ascent
+}
+
+
+export default function SceneViewport({
+  mission,
+  windows,
+  selectedId,
+  onSelect,
+  trajectory,
+  shellsVisible = { leo: false, polar: false, sso: false },
+  draftParams,
+  onTargetBaseChange,
+}) {
   const containerRef = useRef(null)
-  const globeRef = useRef(null) // DOM node the globe mounts into
-  const globeInstance = useRef(null) // the globe.gl instance
-  const shellMeshes = useRef({}) // store shell references to show/hide
+  const globeRef = useRef(null)
+  const globeInstance = useRef(null)
+  const shellMeshes = useRef({})
+  const lastDrawRef = useRef('')
   const [size, setSize] = useState({ width: 0, height: 0 })
+  const [targetBase, setTargetBase] = useState(null)
 
-  // Track the viewport size.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
       setSize({ width: Math.round(width), height: Math.round(height) })
     })
+
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
-  // Create the globe once.
   useEffect(() => {
     const el = globeRef.current
     if (!el) return
@@ -104,14 +222,124 @@ export default function SceneViewport({ mission, windows, selectedId, onSelect, 
 
     globeInstance.current = globe
 
+    const earthRadius = globe.getGlobeRadius()
+    const moonDistance = earthRadius * 3.2
+    const sunDistance = earthRadius * 18
+    const sunRadius = earthRadius * 0.45
+    const moonRadius = earthRadius * 0.12
+
+    const makeGlowSprite = ({ color, opacity, size }) => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 256
+      canvas.height = 256
+      const ctx = canvas.getContext('2d')
+      const gradient = ctx.createRadialGradient(128, 128, 12, 128, 128, 128)
+      gradient.addColorStop(0, color)
+      gradient.addColorStop(0.25, color)
+      gradient.addColorStop(0.55, 'rgba(255,255,255,0.18)')
+      gradient.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = gradient
+      ctx.fillRect(0, 0, 256, 256)
+
+      const texture = new THREE.CanvasTexture(canvas)
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+
+      const sprite = new THREE.Sprite(material)
+      sprite.scale.set(size, size, 1)
+      return sprite
+    }
+
+    const textureLoader = new THREE.TextureLoader()
+    const moonTexture = textureLoader.load(moonSurface)
+    const sunTexture = textureLoader.load(sunSurface)
+
+    const sun = new THREE.Mesh(
+      new THREE.SphereGeometry(sunRadius, 32, 32),
+      new THREE.MeshBasicMaterial({ color: '#ffb347', map: sunTexture })
+    )
+    sun.position.set(-sunDistance, 0, 0)
+
+    const sunGlow = makeGlowSprite({
+      color: 'rgba(255, 185, 71, 0.95)',
+      opacity: 0.9,
+      size: sunRadius * 10,
+    })
+    sun.add(sunGlow)
+    sunGlow.position.set(0, 0, 0)
+
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(moonRadius, 24, 24),
+      new THREE.MeshBasicMaterial({
+        color: '#d7dce6',
+        map: moonTexture,
+      })
+    )
+    moon.position.set(moonDistance, 0, 0)
+
+    const moonGlow = makeGlowSprite({
+      color: 'rgba(180, 195, 215, 0.7)',
+      opacity: 0.35,
+      size: moonRadius * 12,
+    })
+    moon.add(moonGlow)
+    moonGlow.position.set(0, 0, 0)
+
+    globe.scene().add(sun)
+    globe.scene().add(moon)
+
+    shellMeshes.current = {
+      leo: orbitShell(globe, {
+        altMinKm: 160,
+        altMaxKm: 2000,
+        maxLatDeg: 90,
+        color: '#49ff5e',
+        opacity: 0.08,
+        renderOrder: 1,
+      }),
+      polar: orbitShell(globe, {
+        altMinKm: 200,
+        altMaxKm: 1000,
+        maxLatDeg: 90,
+        color: '#ffb74d',
+        opacity: 0.15,
+        renderOrder: 2,
+      }),
+      sso: orbitShell(globe, {
+        altMinKm: 600,
+        altMaxKm: 800,
+        maxLatDeg: 82,
+        color: '#4fc3f7',
+        opacity: 0.25,
+        renderOrder: 3,
+      }),
+    }
+
+    Object.entries(shellMeshes.current).forEach(([name, mesh]) => {
+      mesh.visible = shellsVisible[name] ?? false
+    })
+
     return () => {
-      globe._destructor() // stops the render loop and frees the WebGL context
+      globe.pathsData([])
+      globe.pointsData([])
+      Object.values(shellMeshes.current).forEach(g => {
+        globe.scene().remove(g)
+        g.traverse(o => {
+          o.geometry?.dispose()
+          o.material?.dispose()
+        })
+      })
+      globe._destructor()
       el.innerHTML = ''
       globeInstance.current = null
     }
   }, [])
 
-  // Keep the renderer sized to the viewport.
   useEffect(() => {
     const globe = globeInstance.current
     if (globe && size.width && size.height) {
@@ -119,7 +347,6 @@ export default function SceneViewport({ mission, windows, selectedId, onSelect, 
     }
   }, [size])
 
-  // Update shell visibility when shellsVisible changes.
   useEffect(() => {
     Object.entries(shellsVisible).forEach(([name, visible]) => {
       if (shellMeshes.current[name]) {
@@ -128,56 +355,44 @@ export default function SceneViewport({ mission, windows, selectedId, onSelect, 
     })
   }, [shellsVisible])
 
-  // Build shells and paths; rebuild when the mission or trajectory changes.
   useEffect(() => {
     const globe = globeInstance.current
     if (!globe) return
-    const scene = globe.scene()
 
-    // Ascent: from the trajectory prop if present, otherwise the placeholder.
-    const ascent =
-      trajectory && trajectory.length
-        ? trajectory.map(p => ({ lat: p.lat, lng: p.lon, alt: altFrac(p.altKm) }))
-        : FALLBACK_ASCENT
+    const selectedLaunchSite =
+      (draftParams && draftParams.siteId && LAUNCH_SITES.find((s) => s.id === draftParams.siteId)) ||
+      mission?.launchSite ||
+      LAUNCH_SITES[0]
 
-    // Shells: one group per regime.
-    const shells = {
-      leo: orbitShell(globe, {
-        altMinKm: 160, altMaxKm: 2000, maxLatDeg: 90,
-        color: '#49ff5e', opacity: 0.08, renderOrder: 1,
-      }),
-      polar: orbitShell(globe, {
-        altMinKm: 200, altMaxKm: 1000, maxLatDeg: 90,
-        color: '#ffb74d', opacity: 0.15, renderOrder: 2,
-      }),
-      sso: orbitShell(globe, {
-        altMinKm: 600, altMaxKm: 800, maxLatDeg: 82,
-        color: '#4fc3f7', opacity: 0.25, renderOrder: 3,
-      }),
-    }
+    const targetInclination = Number(draftParams?.inclinationDeg ?? mission?.inclinationDeg ?? 0)
+    const targetAltitude = Number(draftParams?.altitudeKm ?? mission?.altitudeKm ?? 0)
 
-    // Store shell references and apply visibility
-    shellMeshes.current = shells
-    Object.entries(shells).forEach(([name, mesh]) => {
-      mesh.visible = shellsVisible[name] ?? true
-    })
+    const previewDiffersFromMission =
+      draftParams && (
+        draftParams.siteId !== mission?.launchSite?.id ||
+        Number(draftParams.inclinationDeg) !== Number(mission?.inclinationDeg) ||
+        Number(draftParams.altitudeKm) !== Number(mission?.altitudeKm)
+      )
 
-    // Edge rings outlining each shell's bounds (same inclination and RAAN per pair).
-    const ring = (name, altKm, inclinationDeg, raanDeg, color, stroke = 0.5) => ({
-      name,
+    const ascent = getAscent(selectedLaunchSite, targetInclination, targetAltitude, 80)
+
+    if (!ascent || ascent.length < 2) return
+
+    const ring = (altKm, inclinationDeg, raanDeg, color, stroke = 0.5) => ({
       pts: orbitPoints({ altKm, inclinationDeg, raanDeg }),
       color,
       stroke,
     })
 
     const orbits = []
-
-    // Target orbit from the mission, if provided.
-    if (mission?.altitudeKm != null && mission?.inclinationDeg != null) {
-      orbits.push(ring('Target', mission.altitudeKm, mission.inclinationDeg, 0, 'red', 1))
+    if (targetAltitude > 0 && targetInclination > 0) {
+      orbits.push(ring(targetAltitude, targetInclination, 0, 'red', 1))
     }
 
-    const paths = [{ name: 'ascent', pts: ascent, color: 'red', stroke: 2 }, ...orbits]
+    const paths = [{ name: 'Ascent Path', pts: ascent, color: 'red', stroke: 2 }, ...orbits]
+
+    globe.pathsData([])
+    globe.pointsData([])
 
     globe
       .pathsData(paths)
@@ -187,34 +402,108 @@ export default function SceneViewport({ mission, windows, selectedId, onSelect, 
       .pathPointAlt(p => p.alt)
       .pathColor(d => d.color)
       .pathStroke(d => d.stroke)
-      .pathResolution(1) // avoids rings being cut into visible straight segments
+      .pathResolution(1)
 
-    // Markers: launch site and ascent end.
+    const activeTargetBase =
+      targetBase ||
+      (draftParams && draftParams.siteId && LAUNCH_SITES.find((s) => s.id === draftParams.siteId)) ||
+      mission?.launchSite ||
+      LAUNCH_SITES[0]
+
     const markers = []
-    if (mission?.launchSite) {
-      markers.push({ lat: mission.launchSite.lat, lng: mission.launchSite.lon, alt: 0, color: 'white' })
-    }
+    LAUNCH_SITES.forEach((launchSite) => {
+    
+
+      // Add a smaller dark dot when this site is the active target base
+      if (launchSite.id === activeTargetBase.id) {
+        markers.push({
+        id: launchSite.id,
+        type: 'launchsite-interactive',
+        name: launchSite.name,
+        lat: launchSite.lat,
+        lng: launchSite.lon,
+        alt: 0,
+        color: 'yellow',
+        
+        })
+        markers.push({
+        id: launchSite.id,
+        type: 'launchsite-selected',
+        name: launchSite.name,
+        lat: launchSite.lat,
+        lng: launchSite.lon,
+        alt: 0,
+        color: 'black',
+        
+        })
+      }else{
+        markers.push({
+        id: launchSite.id,
+        type: 'launchsite-interactive',
+        name: launchSite.name,
+        lat: launchSite.lat,
+        lng: launchSite.lon,
+        alt: 0,
+        color: 'white',
+      })
+      }
+    })
+
     const last = ascent[ascent.length - 1]
-    markers.push({ lat: last.lat, lng: last.lng, alt: last.alt, color: 'yellow' })
+    markers.push({
+      id: 'ascent-target',
+      type: 'target',
+      lat: last.lat,
+      lng: last.lng,
+      alt: last.alt,
+      color: 'yellow',
+    })
+
+    const intersectionPoint = {
+      id: 'intersection-point',
+      type: 'intersection',
+      name: last.lat.toFixed(2) + '°, lon: ' + last.lng.toFixed(2) + '°, alt: ' + targetAltitude + ' km',
+      lat: last.lat, 
+      lng: last.lng,
+      alt: last.alt,
+      color: '#2fe36b',
+    }
+
 
     globe
       .pointsData(markers)
       .pointLat(d => d.lat)
       .pointLng(d => d.lng)
       .pointAltitude(d => d.alt)
-      .pointRadius(0.5)
+      .pointLabel(d => d.name)
+      .pointRadius(d => (d.type === 'launchsite-interactive' ? 1.5 : d.type === 'launchsite-selected' ? 1.0 : 0.5))
       .pointColor(d => d.color)
+      .onPointClick((point, event, coords) => {
+        if (!coords || point?.type !== 'launchsite-interactive') return
 
-    return () => {
-      Object.values(shells).forEach(g => {
-        scene.remove(g)
-        g.traverse(o => {
-          o.geometry?.dispose()
-          o.material?.dispose()
-        })
+        const clickedSite = LAUNCH_SITES.find((site) => site.id === point.id)
+        if (!clickedSite) return
+
+        setTargetBase(clickedSite)
+        if (onTargetBaseChange) onTargetBaseChange(clickedSite)
+        globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
       })
-    }
-  }, [mission, trajectory])
+
+          // true dot for the intersection
+      .objectsData([intersectionPoint])
+      .objectLat(d => d.lat)
+      .objectLng(d => d.lng)
+      .objectAltitude(d => d.alt)
+      .objectLabel(d => d.name)
+      .objectThreeObject(d =>
+        new THREE.Mesh(
+          new THREE.SphereGeometry(1, 16, 16), // radius in globe units (globe radius = 100)
+          new THREE.MeshBasicMaterial({ color: d.color })
+        )
+      );
+
+    globe.pointOfView({ lat: activeTargetBase.lat, lng: activeTargetBase.lon }, 2000)
+  }, [mission, trajectory, draftParams, targetBase, onTargetBaseChange])
 
   return (
     <div ref={containerRef} className={classes.viewport}>
