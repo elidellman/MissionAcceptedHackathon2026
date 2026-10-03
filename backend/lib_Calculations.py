@@ -160,6 +160,18 @@ def create_window(intersection_time, window_minutes=10):
         "end": end_time
     }
 
+"""
+Calculates the launch windows based on the launch site, orbit type, right ascension of the
+ascending node, and the current time.
+
+Params:
+    launchSite [String]: The name of the launch site.
+    inclination [float]: The inclination of the orbit in degrees.
+    raan [float]: The right ascension of the ascending node in degrees.
+    current_time [float]: The current time in seconds since epoch.
+    window_minutes [int]: The width of the window in minutes.
+"""
+
 def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10):
     intersections = get_plane_intersections(launchSite, inclination, raan)
 
