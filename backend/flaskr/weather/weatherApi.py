@@ -84,8 +84,6 @@ def get_weather_forecast(latitude, longitude, days=16):
         "precipitation_unit": "inch"
     }
 
-    print("Requesting weather from Open-Meteo...")
-
     responses = openmeteo.weather_api(
         url,
         params=params
@@ -94,7 +92,6 @@ def get_weather_forecast(latitude, longitude, days=16):
     response = responses[0]
     hourly = response.Hourly()
 
-    # Create timestamps for each hourly forecast
     times = pd.date_range(
         start=pd.to_datetime(
             hourly.Time(),
@@ -115,41 +112,15 @@ def get_weather_forecast(latitude, longitude, days=16):
     weather = pd.DataFrame({
         "time": times,
 
-        "temperature": (
-            hourly.Variables(0).ValuesAsNumpy()
-        ),
-
-        "cloud_cover": (
-            hourly.Variables(1).ValuesAsNumpy()
-        ),
-
-        "visibility": (
-            hourly.Variables(2).ValuesAsNumpy()
-        ),
-
-        "rain": (
-            hourly.Variables(3).ValuesAsNumpy()
-        ),
-
-        "wind_speed": (
-            hourly.Variables(4).ValuesAsNumpy()
-        ),
-
-        "wind_gusts": (
-            hourly.Variables(5).ValuesAsNumpy()
-        ),
-
-        "wind_80m": (
-            hourly.Variables(6).ValuesAsNumpy()
-        ),
-
-        "wind_120m": (
-            hourly.Variables(7).ValuesAsNumpy()
-        ),
-
-        "wind_180m": (
-            hourly.Variables(8).ValuesAsNumpy()
-        )
+        "temperature": hourly.Variables(0).ValuesAsNumpy(),
+        "cloud_cover": hourly.Variables(1).ValuesAsNumpy(),
+        "visibility": hourly.Variables(2).ValuesAsNumpy(),
+        "rain": hourly.Variables(3).ValuesAsNumpy(),
+        "wind_speed": hourly.Variables(4).ValuesAsNumpy(),
+        "wind_gusts": hourly.Variables(5).ValuesAsNumpy(),
+        "wind_80m": hourly.Variables(6).ValuesAsNumpy(),
+        "wind_120m": hourly.Variables(7).ValuesAsNumpy(),
+        "wind_180m": hourly.Variables(8).ValuesAsNumpy()
     })
 
     return weather
@@ -163,57 +134,32 @@ def evaluate_weather(hour):
 
     checks = {}
 
-    # -----------------------------------------------------
     # Surface wind
-    # -----------------------------------------------------
-
     wind = float(hour["wind_speed"])
 
     checks["surface_wind"] = {
         "value": round(wind, 1),
         "limit": MAX_WIND_MPH,
         "unit": "mph",
-        "status": (
-            "PASS"
-            if wind <= MAX_WIND_MPH
-            else "FAIL"
-        )
+        "status": "PASS" if wind <= MAX_WIND_MPH else "FAIL"
     }
 
-    # -----------------------------------------------------
     # Rain
-    # -----------------------------------------------------
-
     rain = float(hour["rain"])
 
     checks["rain"] = {
         "value": round(rain, 2),
         "limit": MAX_RAIN_IN_HOUR,
         "unit": "in/hr",
-        "status": (
-            "PASS"
-            if rain < MAX_RAIN_IN_HOUR
-            else "FAIL"
-        )
+        "status": "PASS" if rain < MAX_RAIN_IN_HOUR else "FAIL"
     }
 
-    # -----------------------------------------------------
     # Visibility
-    # -----------------------------------------------------
-
-    visibility_meters = float(
-        hour["visibility"]
-    )
-
-    visibility_miles = (
-        visibility_meters / 1609.344
-    )
+    visibility_meters = float(hour["visibility"])
+    visibility_miles = visibility_meters / 1609.344
 
     checks["visibility"] = {
-        "value": round(
-            visibility_miles,
-            2
-        ),
+        "value": round(visibility_miles, 2),
         "limit": MIN_VISIBILITY_MILES,
         "unit": "miles",
         "status": (
@@ -223,11 +169,7 @@ def evaluate_weather(hour):
         )
     }
 
-    # -----------------------------------------------------
     # Winds aloft
-    #
-    # -----------------------------------------------------
-
     wind_80m = float(hour["wind_80m"])
     wind_120m = float(hour["wind_120m"])
     wind_180m = float(hour["wind_180m"])
@@ -246,26 +188,20 @@ def evaluate_weather(hour):
         "limit": MAX_WINDS_ALOFT_MPH,
         "unit": "mph",
         "status": (
-           "PASS"
+            "PASS"
             if max_wind_aloft <= MAX_WINDS_ALOFT_MPH
             else "FAIL"
         )
     }
 
-    # -----------------------------------------------------
-    # Overall status
-    # -----------------------------------------------------
-
+    # Overall result
     failed_checks = [
         name
         for name, check in checks.items()
         if check["status"] == "FAIL"
     ]
 
-    if failed_checks:
-        status = "red"
-    else:
-        status = "green"
+    status = "red" if failed_checks else "green"
 
     return {
         "status": status,
@@ -274,29 +210,18 @@ def evaluate_weather(hour):
 
 
 # =========================================================
-# Check weather for ONE specific launch time
+# Evaluate weather at a specific time
 # =========================================================
 
-def get_weather_status(site_id, launch_time):
-
-    if site_id not in LAUNCH_SITES:
-        raise ValueError(
-            f"Unknown launch site: {site_id}"
-        )
-
-    site = LAUNCH_SITES[site_id]
-
-    weather = get_weather_forecast(
-        site["latitude"],
-        site["longitude"]
-    )
+def evaluate_weather_at_time(weather, launch_time):
 
     launch_time = pd.to_datetime(
         launch_time,
         utc=True
     )
 
-    # Find the forecast hour closest to launch time
+    weather = weather.copy()
+
     weather["time_difference"] = abs(
         weather["time"] - launch_time
     )
@@ -307,24 +232,14 @@ def get_weather_status(site_id, launch_time):
 
     result = evaluate_weather(closest)
 
-    return {
-        "site_id": site_id,
-        "launch_time": launch_time.isoformat(),
-        "weather_time": closest["time"].isoformat(),
-        "weather": result["status"],
-        "checks": result["checks"]
-    }
+    return result, closest["time"]
 
 
 # =========================================================
-# Find weather conditions for EVERY hour in a window
+# Check weather for orbital windows
 # =========================================================
 
-def get_weather_windows(
-    site_id,
-    start_time,
-    end_time
-):
+def check_orbital_windows(site_id, windows):
 
     if site_id not in LAUNCH_SITES:
         raise ValueError(
@@ -333,63 +248,53 @@ def get_weather_windows(
 
     site = LAUNCH_SITES[site_id]
 
-    start_time = pd.to_datetime(
-        start_time,
-        utc=True
-    )
-
-    end_time = pd.to_datetime(
-        end_time,
-        utc=True
-    )
-
-    if end_time < start_time:
-        raise ValueError(
-            "end_time must be after start_time"
-        )
-
-    # Calculate how many days of forecast we need
-    days = max(
-        1,
-        (end_time - start_time).days + 1
-    )
-
-    # Open-Meteo forecast limit is handled by requesting
-    # up to 16 days here.
-    days = min(days, 16)
-
+    # Download forecast ONCE
     weather = get_weather_forecast(
         site["latitude"],
         site["longitude"],
-        days=days
+        days=16
     )
-
-    # Only keep the requested time window
-    weather = weather[
-        (weather["time"] >= start_time)
-        &
-        (weather["time"] <= end_time)
-    ]
 
     results = []
 
-    for _, hour in weather.iterrows():
+    for i, window in enumerate(windows, 1):
 
-        result = evaluate_weather(hour)
+        # Use orbital window peak as launch time
+        launch_time = window["peak"]
+
+        weather_result, weather_time = (
+            evaluate_weather_at_time(
+                weather,
+                launch_time
+            )
+        )
 
         results.append({
-            "time": hour["time"].isoformat(),
-            "weather": result["status"],
-            "checks": result["checks"]
+            "id": f"w{i}",
+
+            "start": pd.to_datetime(
+                window["start"],
+                utc=True
+            ).isoformat(),
+
+            "peak": pd.to_datetime(
+                window["peak"],
+                utc=True
+            ).isoformat(),
+
+            "end": pd.to_datetime(
+                window["end"],
+                utc=True
+            ).isoformat(),
+
+            "weather": weather_result["status"],
+
+            "weather_time": weather_time.isoformat(),
+
+            "checks": weather_result["checks"]
         })
 
-    return {
-        "site_id": site_id,
-        "start_time": start_time.isoformat(),
-        "end_time": end_time.isoformat(),
-        "hours": results
-    }
-
+    return results
 
 # =========================================================
 # TEST
@@ -404,7 +309,7 @@ if __name__ == "__main__":
     print()
 
     # -----------------------------------------------------
-    # Test one specific launch time
+    # Test 1: One specific launch time
     # -----------------------------------------------------
 
     site_id = "nova-scotia"
@@ -415,21 +320,21 @@ if __name__ == "__main__":
     print("Launch time:", launch_time)
     print()
 
-    result = get_weather_status(
-        site_id,
+    site = LAUNCH_SITES[site_id]
+
+    weather = get_weather_forecast(
+        site["latitude"],
+        site["longitude"],
+        days=16
+    )
+
+    result, weather_time = evaluate_weather_at_time(
+        weather,
         launch_time
     )
 
-    print(
-        "WEATHER:",
-        result["weather"]
-    )
-
-    print(
-        "Forecast hour:",
-        result["weather_time"]
-    )
-
+    print("Forecast hour:", weather_time)
+    print("WEATHER:", result["status"])
     print()
 
     for name, check in result["checks"].items():
@@ -437,33 +342,63 @@ if __name__ == "__main__":
         print(name)
 
         for key, value in check.items():
-
-            print(
-                f"  {key}: {value}"
-            )
+            print(f"  {key}: {value}")
 
         print()
 
     # -----------------------------------------------------
-    # Test hourly weather window
+    # Test 2: Simulated orbital windows
+    #
+    # These imitate what Oliver's code will eventually
+    # give us.
     # -----------------------------------------------------
 
     print()
     print("==============================")
-    print("   HOURLY WEATHER WINDOW")
+    print("   ORBITAL WINDOW TEST")
     print("==============================")
     print()
 
-    hourly_result = get_weather_windows(
+    test_windows = [
+        {
+            "start": "2026-10-03T14:00:00Z",
+            "peak": "2026-10-03T14:05:00Z",
+            "end": "2026-10-03T14:10:00Z"
+        },
+
+        {
+            "start": "2026-10-03T18:00:00Z",
+            "peak": "2026-10-03T18:05:00Z",
+            "end": "2026-10-03T18:10:00Z"
+        },
+
+        {
+            "start": "2026-10-04T12:00:00Z",
+            "peak": "2026-10-04T12:05:00Z",
+            "end": "2026-10-04T12:10:00Z"
+        }
+    ]
+
+    orbital_results = check_orbital_windows(
         "nova-scotia",
-        "2026-10-03T00:00:00Z",
-        "2026-10-19T23:00:00Z"
+        test_windows
     )
 
-    for hour in hourly_result["hours"]:
+    for window in orbital_results:
 
-        print(
-            hour["time"],
-            "->",
-            hour["weather"]
-        )
+        print("Window:", window["id"])
+        print("Start:", window["start"])
+        print("Peak:", window["peak"])
+        print("End:", window["end"])
+        print("Weather:", window["weather"])
+        print("Forecast hour:", window["weather_time"])
+
+        print()
+
+        for name, check in window["checks"].items():
+
+            print(
+                f"  {name}: {check['status']}"
+            )
+
+        print()
