@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from Calculations import calculate_launch_windows
+from launch_data import filter_conflicting_windows, get_cape_launches
 
 
 if __name__ == "__main__":
@@ -18,7 +19,7 @@ if __name__ == "__main__":
     altitude = 500_000
 
     # Advanced settings
-    raan = 30
+    raan = 67
     vehicle_duration = 480  # 8 minutes
 
     current_time = datetime.now(timezone.utc)
@@ -50,19 +51,21 @@ if __name__ == "__main__":
     print("\nRESULTS")
 
     print(f"Calculated Inclination: {result['inclination']}°")
-    print(f"Azimuth:                {result['azimuth']:.3f}°")
-    print(f"Adjusted Azimuth:       {result['adjusted_azimuth']:.3f}°")
+    if('azimuth' in result and result['azimuth'] is not None):
+        print(f"Azimuth:                {result['azimuth']:.3f}°")
+        print(f"Adjusted Azimuth:       {result['adjusted_azimuth']:.3f}°")
 
     windows = result["windows"]
+    launches = get_cape_launches()
+    available_windows = filter_conflicting_windows(windows, launches)
 
-    print(f"\nNumber of launch windows: {len(windows)}")
+    print(f"\nNumber of available launch windows: {len(available_windows)}")
 
-    for i, window in enumerate(windows, 1):
-
-        print(f"\nWindow {i}")
-        print(f"  Start: {window['start'].strftime('%H:%M')}")
-        print(f"  Peak:  {window['peak'].strftime('%H:%M')}")
-        print(f"  End:   {window['end'].strftime('%H:%M')}")
+    for i, window in enumerate(available_windows, 1):
+        print(f"\nAvailable Window {i}")
+        print(f"Start: {window['start'].strftime('%Y-%m-%d %H:%M')}")
+        print(f"Peak:  {window['peak'].strftime('%Y-%m-%d %H:%M')}")
+        print(f"End:   {window['end'].strftime('%Y-%m-%d %H:%M')}")
 
     print("\n" + "=" * 60)
     print("                   END MOCK")

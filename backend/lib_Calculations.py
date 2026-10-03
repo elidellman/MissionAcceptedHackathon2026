@@ -35,6 +35,10 @@ LaunchSites = {
     "CapeCanaveral": {
         "latitude": 28.5620,
         "longitude": -80.5772
+    },
+    "SpacePort": {
+        "latitude": 45.3031,
+        "longitude": -60.9828
     }
 }
 
@@ -54,11 +58,18 @@ def get_Azimuth(launchSite, orbitType):
     inclination = OrbitTypes[orbitType]["inclination"]
     latitude = LaunchSites[launchSite]["latitude"]
 
-    cos_inclination = math.cos(math.radians(inclination))
-    cos_latitude = math.cos(math.radians(latitude))
+    ratio = (
+        math.sin(math.radians(inclination))
+        / math.cos(math.radians(latitude))
+    )
 
-    azimuth = math.asin(cos_inclination/cos_latitude)
-    return math.degrees(azimuth)
+    # Target orbit does not pass directly over the launch site.
+    if abs(ratio) > 1:
+        return None
+
+    azimuth = math.degrees(math.asin(ratio))
+
+    return azimuth
 
 """
 Adjusted Azimuth is the Azimuth adjusted for the duration of the vehicle's flight.
@@ -70,6 +81,9 @@ Params:
 """
 
 def get_AdjustedAzimuth(azimuth, vehicleDuration=None):
+    if azimuth is None:
+        return None
+    
     if vehicleDuration is None:
         return azimuth
 
