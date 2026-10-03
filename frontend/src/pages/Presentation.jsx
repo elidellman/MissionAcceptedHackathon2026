@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Slide from '../features/presentation/Slide.jsx'
 import classes from '../features/presentation/Presentation.module.css'
+import { CREDITS, PAGE_CREDITS } from '../credits.js'
 
 /**
  * Presentation page: full-screen sections that snap into place and animate in.
@@ -266,7 +267,9 @@ export default function Presentation() {
       <div className={classes.counter}>
         {String(active + 1).padStart(2, '0')} / {String(SLIDES.length).padStart(2, '0')}
       </div>
-      <div className={classes.credit}>Satellites: illustration of the RADARSAT Constellation (built by MDA)</div>
+      <div className={classes.credit}>
+        {PAGE_CREDITS.presentation.map((id) => `${CREDITS[id].what}: ${CREDITS[id].by}`).join(' · ')}
+      </div>
     </div>
   )
 }

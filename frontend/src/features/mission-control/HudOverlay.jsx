@@ -1,5 +1,7 @@
 import { VIEWING_SPOTS } from './viewingSpotsData.js'
 import ViewingSpots from './ViewingSpots'
+import PageCredits from '../../components/PageCredits.jsx'
+import { PAGE_CREDITS } from '../../credits.js'
 import { useEffect, useRef, useState } from 'react'
 import { Badge, Button, Group, Paper, Stack, Text, UnstyledButton } from '@mantine/core'
 import classes from './MissionControl.module.css'
@@ -99,6 +101,7 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
           </Group>
         </Stack>
         <ViewingSpots spots={VIEWING_SPOTS[mission.launchSite.id] ?? []} />
+        <PageCredits ids={PAGE_CREDITS.missionControl} collapsible mt={12} />
       </Paper>
 
       {/* Top-right, left of the countdown panel: live feed of the clicked launch site */}
