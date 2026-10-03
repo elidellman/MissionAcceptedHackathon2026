@@ -27,6 +27,11 @@ function TextBox({ slide, i = 0, center = false, big = false }) {
         <Title order={big ? 1 : 2} fz={big ? { base: 40, sm: 64 } : { base: 28, sm: 40 }} lh={1.1}>
           {slide.title}
         </Title>
+        {slide.subtitle && (
+          <Text size={big ? 'xl' : 'lg'} fw={600} c="orange.3">
+            {slide.subtitle}
+          </Text>
+        )}
         {slide.body && (
           <Text size={big ? 'xl' : 'lg'} c="gray.4">
             {slide.body}
@@ -93,6 +98,11 @@ export default function Slide({ slide }) {
             <Title order={2} fz={{ base: 28, sm: 40 }} mt={6}>
               {slide.title}
             </Title>
+            {slide.subtitle && (
+              <Text size="lg" fw={600} c="orange.3" mt={6}>
+                {slide.subtitle}
+              </Text>
+            )}
           </div>
           <Grid gutter="lg" align="stretch">
             <Grid.Col span={{ base: 12, md: 5 }}>
