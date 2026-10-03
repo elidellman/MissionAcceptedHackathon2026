@@ -22,7 +22,7 @@ const SLIDES = [
     kicker: 'Mission Accepted 2026 · Challenge 2',
     title: 'Mission Control',
     subtitle: 'A launch dashboard that tells planners and the public when to launch, and why',
-    body: 'Eli · Ely · Oliver · Hazem · Jeremy · Jeremiah',
+    body: 'Eli · Ely · Oliver · Hazem · Jeremy ',
   },
   {
     id: 'problem',
