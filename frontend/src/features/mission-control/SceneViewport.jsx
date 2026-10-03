@@ -135,19 +135,7 @@ function orbitShell(globe, { altMinKm, altMaxKm, maxLatDeg = 90, color, opacity 
   return group
 }
 
-// NEW: the point of entry into orbit. For now it is the last point of the ascent trajectory,
-// and the time is the selected window's opening plus the ascent duration.
-// When your teammates' real entry point exists, return it from here instead.
-function getEntry(trajectory, windows, selectedId) {
-  if (!trajectory?.length) return null
-  const last = trajectory[trajectory.length - 1]
-  const win = windows?.find(w => w.id === selectedId) ?? windows?.[0]
-  if (!win) return null
-  const time = new Date(new Date(win.opensAt).getTime() + (last.tSec ?? 0) * 1000)
-  return { lat: last.lat, lon: last.lon, altKm: last.altKm, time }
-}
-
-// NEW: a cloud of tiny points floating at lat/lng/altitude.
+// A cloud of tiny points floating at lat/lng/altitude.
 function makePoints(globe, items, { size, color, opacity }) {
   const arr = new Float32Array(items.length * 3)
   items.forEach(([lat, lng, altKm], i) => {
@@ -290,8 +278,7 @@ export default function SceneViewport({
   selectedId,
   onSelect,
   trajectory,
-  shellsVisible = { leo: false, polar: false, sso: false },
-  showDebris = true,
+  shellsVisible = { leo: false, polar: false, sso: false, debris: true },
   draftParams,
   onTargetBaseChange,
   onLaunchSiteClick,
@@ -304,7 +291,8 @@ export default function SceneViewport({
   const lastDrawRef = useRef('')
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [targetBase, setTargetBase] = useState(null)
-  const [debris, setDebris] = useState(null) // NEW: result from /api/debris
+  const [debris, setDebris] = useState(null) // result from /api/debris
+  const [entry, setEntry] = useState(null) // point of entry into orbit, used for the debris check
 
   // Latest click callback, kept in a ref so the globe effect doesn't need to re-run when it changes
   const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
@@ -623,6 +611,7 @@ export default function SceneViewport({
     })
 
     const last = ascent[ascent.length - 1]
+    setEntry({ lat: last.lat, lon: last.lng, altKm: targetAltitude })
     markers.push({
       id: 'ascent-target',
       type: 'target',
@@ -725,46 +714,52 @@ export default function SceneViewport({
     }
   }, [])
 
-  // NEW: ask the backend what debris is near the entry point.
+  // Ask the backend what debris is near the entry point.
   useEffect(() => {
-    const entry = getEntry(trajectory, windows, selectedId)
     if (!entry) return
+
+    // Time of entry: the selected window's opening plus roughly 10 minutes of ascent
+    const win = windows?.find(w => w.id === selectedId) ?? windows?.[0]
+    const base = win ? new Date(win.opensAt).getTime() : Date.now()
+    const when = new Date(base + 600 * 1000)
 
     const ctrl = new AbortController()
     const qs = new URLSearchParams({
       lat: entry.lat,
       lon: entry.lon,
       alt_km: entry.altKm,
-      time: entry.time.toISOString(),
+      time: when.toISOString(),
       radius_km: DEBRIS_RADIUS_KM,
     })
+    console.log('requesting debris check:', Object.fromEntries(qs))
 
     fetch(`/api/debris?${qs}`, { signal: ctrl.signal })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`debris request failed: ${r.status}`))))
       .then(data => {
         setDebris(data)
-        console.log('debris check:', data.clear ? 'CLEAR' : `${data.nearby.length} nearby`, data.nearby)
+        console.log('debris check:', data.clear ? 'CLEAR' : `${data.nearby.length} nearby`, 'cloud size:', data.cloud.length)
       })
       .catch(err => {
         if (err.name !== 'AbortError') console.warn(err)
       })
 
     return () => ctrl.abort()
-  }, [trajectory, windows, selectedId])
+  }, [entry?.lat, entry?.lon, entry?.altKm, windows, selectedId])
 
-  // NEW: draw the debris as tiny points (grey-red cloud, plus bright red for anything inside the radius).
+  // Draw the debris as tiny points (cloud, plus bright red for anything inside the radius).
   useEffect(() => {
     const globe = globeInstance.current
-    if (!globe || !debris || !showDebris) return
+    const debrisOn = shellsVisible.debris ?? true
+    if (!globe || !debris || !debrisOn) return
     const scene = globe.scene()
 
     const group = new THREE.Group()
     const cloud = debris.cloud.filter(([, , altKm]) => altKm > 100) // drop objects that look already decayed
-    group.add(makePoints(globe, cloud, { size: 0.35, color: '#ff8a80', opacity: 0.7 }))
+    group.add(makePoints(globe, cloud, { size: 0.9, color: '#ff8a80', opacity: 0.9 }))
 
     if (debris.nearby.length) {
       const near = debris.nearby.map(d => [d.lat, d.lon, d.alt_km])
-      group.add(makePoints(globe, near, { size: 1.5, color: '#ff1744', opacity: 1 }))
+      group.add(makePoints(globe, near, { size: 2.5, color: '#ff1744', opacity: 1 }))
     }
 
     scene.add(group)
@@ -775,7 +770,7 @@ export default function SceneViewport({
         o.material?.dispose()
       })
     }
-  }, [debris, showDebris])
+  }, [debris, shellsVisible.debris])
 
   return (
     <div ref={containerRef} className={classes.viewport}>
