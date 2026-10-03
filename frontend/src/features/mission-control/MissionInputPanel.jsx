@@ -112,7 +112,7 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
               onChange={set('altitudeKm')}
               min={160}
               max={2000}
-              step={10}
+              hideControls
             />
 
             <NumberInput
