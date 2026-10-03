@@ -10,14 +10,17 @@ export default function Layout() {
   const [opened, { toggle, close }] = useDisclosure(false)
   const { pathname } = useLocation()
 
-  // The 3D page gets the full area below the header with no padding.
-  const isFullBleed = pathname === ROUTES.missionControl.path
+  // Full-screen pages: fill the area below the header, no padding, no page scroll
+  // (Mission Control = 3D scene, Presentation = its own scrolling sections).
+  const isFullBleed = pathname === ROUTES.missionControl.path || pathname === ROUTES.presentation.path
+  // Edge-to-edge pages that still scroll normally (Home has a full-width hero image).
+  const noPadding = isFullBleed || pathname === ROUTES.home.path
 
   return (
     <AppShell
       header={{ height: HEADER_HEIGHT }}
       navbar={{ width: 240, breakpoint: 'sm', collapsed: { desktop: true, mobile: !opened } }}
-      padding={isFullBleed ? 0 : 'md'}
+      padding={noPadding ? 0 : 'md'}
     >
       <AppShell.Header className={classes.header}>
         <Group h="100%" px="md" justify="space-between">
