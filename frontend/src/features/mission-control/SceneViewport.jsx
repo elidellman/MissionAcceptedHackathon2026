@@ -883,10 +883,10 @@ export default function SceneViewport({
 
     if (!globe) return
 
-    const activeTargetBase =
-      LAUNCH_SITES.find(
-        s => s.id === siteId
-      ) ?? LAUNCH_SITES[0]
+    // const activeTargetBase =
+    //   LAUNCH_SITES.find(
+    //     s => s.id === siteId
+    //   ) ?? LAUNCH_SITES[0]
 
     const {
       ascent,
