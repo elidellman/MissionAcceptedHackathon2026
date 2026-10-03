@@ -42,7 +42,7 @@ function useWidth(ref) {
 export default function HudOverlay({ mission, windows, selectedId, onSelect, shellsVisible, onShellsChange, liveFeedSite, onCloseLiveFeed, children }) {
   const topRightRef = useRef(null)
   const topRightWidth = useWidth(topRightRef)
-  console.log('launchSite:', mission.launchSite)
+  //console.log('launchSite:', mission.launchSite)
 
   const [windowsOpen, setWindowsOpen] = useState(true)
 
@@ -52,6 +52,9 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
   const toggleShell = (shell) => {
     onShellsChange({ ...shellsVisible, [shell]: !shellsVisible[shell] })
   }
+
+  // Debris is on unless the state says otherwise
+  const debrisOn = shellsVisible.debris ?? true
 
   return (
     <div className={classes.hud}>
@@ -98,6 +101,19 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
               SSO
             </Button>
             
+          </Group>
+
+          {/* Debris toggle */}
+          <Text size="xs" c="dimmed" tt="uppercase" fw={700} ta="center" mt={4}>Space debris</Text>
+          <Group gap={6} justify="center">
+            <Button
+              size="xs"
+              variant={debrisOn ? 'filled' : 'light'}
+              color="red"
+              onClick={() => onShellsChange({ ...shellsVisible, debris: !debrisOn })}
+            >
+              {debrisOn ? 'Hide debris' : 'Show debris'}
+            </Button>
           </Group>
         </Stack>
         <ViewingSpots spots={VIEWING_SPOTS[mission.launchSite.id] ?? []} />

@@ -28,7 +28,7 @@ export default function MissionControl() {
   const [selectedId, setSelectedId] = useState(null)
   const [trajectory, setTrajectory] = useState([])
   const [error, setError] = useState(null)
-  const [shellsVisible, setShellsVisible] = useState({ leo: false, polar: false, sso: false })
+  const [shellsVisible, setShellsVisible] = useState({ leo: false, polar: false, sso: false, debris: true})
   // Launch site whose live feed is open (set by clicking a site that has `liveFeed` on the globe)
   const [liveFeedSite, setLiveFeedSite] = useState(null)
 
