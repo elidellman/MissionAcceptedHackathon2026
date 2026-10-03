@@ -1138,6 +1138,22 @@ export default function SceneViewport({
   const ascentAzimuth =
     Number(mission?.azimuthDeg)
 
+  // Any change to the Mission Inputs changes this key
+  const draftKey = JSON.stringify([
+    draftParams?.siteId,
+    draftParams?.orbit,
+    Number(draftParams?.inclinationDeg),
+    Number(draftParams?.altitudeKm),
+    Number(draftParams?.days),
+  ])
+
+  // The inputs the current `mission` was calculated with (recorded when a result arrives).
+  // While the inputs differ from this, the path / orbit / model are reset and hidden.
+  const missionDraftKeyRef = useRef(null)
+  useEffect(() => {
+    missionDraftKeyRef.current = mission ? draftKey : null
+  }, [mission]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Track container size.
   useEffect(() => {
     const el =
@@ -1488,17 +1504,7 @@ export default function SceneViewport({
   useEffect(() => {
     const globe = globeInstance.current
     if (!globe) return
-  // Don't draw a mission trajectory until the submitted
-    // mission has all the data required to construct it.
-    if (
-      !mission ||
-      !Number.isFinite(targetAltitude) ||
-      targetAltitude <= 0 ||
-      !Number.isFinite(targetInclination) ||
-      !Number.isFinite(ascentAzimuth)
-    ) {
-      return
-    }
+
     const activeTargetBase =
       (
         draftParams?.siteId &&
@@ -1511,6 +1517,71 @@ export default function SceneViewport({
       targetBase ||
       mission?.launchSite ||
       LAUNCH_SITES[0]
+
+    // Launch sites are always drawn as miniature 3D models (objects layer),
+    // whether or not a mission has been calculated
+    const siteModels = LAUNCH_SITES.map((launchSite) => ({
+      id: launchSite.id,
+      type: 'site',
+      name: `${launchSite.name} (click to select)`,
+      lat: launchSite.lat,
+      lng: launchSite.lon,
+      alt: 0.001,
+      active: launchSite.id === activeTargetBase.id,
+    }))
+
+    const selectSite = (siteIdClicked) => {
+      const clickedSite = LAUNCH_SITES.find(site => site.id === siteIdClicked)
+      if (!clickedSite) return
+      setTargetBase(clickedSite)
+      onTargetBaseChangeRef.current?.(clickedSite)
+      onLaunchSiteClickRef.current?.(clickedSite)
+      // Fly there now, and remember it so the camera effect doesn't fly there again
+      lastViewedSiteRef.current = clickedSite.id
+      globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
+    }
+
+    globe
+      .objectLat(d => d.lat)
+      .objectLng(d => d.lng)
+      .objectAltitude(d => d.alt)
+      .objectLabel(d => d.name)
+      .objectThreeObject(d =>
+        d.type === 'iss'
+          ? makeIssObject()
+          : d.type === 'site'
+            ? makeLaunchSiteModel({ siteId: d.id, active: d.active })
+            : new THREE.Mesh(
+                new THREE.SphereGeometry(1, 16, 16),
+                new THREE.MeshBasicMaterial({ color: d.color })
+              )
+      )
+      .onObjectClick((obj) => {
+        if (obj?.type === 'iss') onIssClickRef.current?.()
+        if (obj?.type === 'site') selectSite(obj.id)
+      })
+      .onObjectHover((obj) => {
+        if (globeRef.current) globeRef.current.style.cursor = obj?.type === 'iss' || obj?.type === 'site' ? 'pointer' : ''
+      })
+
+    // RESET: draw no ascent path, target orbit or entry point unless there's a calculated
+    // mission AND the Mission Inputs still match what it was calculated with.
+    // (Any change to the inputs also stops the simulation; see pages/MissionControl.jsx.)
+    const stale = !mission || missionDraftKeyRef.current !== draftKey
+    if (
+      stale ||
+      !Number.isFinite(targetAltitude) ||
+      targetAltitude <= 0 ||
+      !Number.isFinite(targetInclination) ||
+      !Number.isFinite(ascentAzimuth)
+    ) {
+      flightRef.current = { ascent: [], endTheta: 0, altKm: 0, inclinationDeg: 0, raanDeg: 0 }
+      setEntry(null)
+      globe.pointsData([])
+      missionLayers.current = { paths: [], objects: siteModels }
+      applyLayers()
+      return
+    }
 
     const {
       ascent,
@@ -1613,27 +1684,6 @@ export default function SceneViewport({
       .pathResolution(1)
 
     const markers = []
-    // Launch sites are drawn as miniature 3D models (objects layer) instead of dots
-    const siteModels = LAUNCH_SITES.map((launchSite) => ({
-      id: launchSite.id,
-      type: 'site',
-      name: `${launchSite.name} (click to select)`,
-      lat: launchSite.lat,
-      lng: launchSite.lon,
-      alt: 0.001,
-      active: launchSite.id === activeTargetBase.id,
-    }))
-
-    const selectSite = (siteIdClicked) => {
-      const clickedSite = LAUNCH_SITES.find(site => site.id === siteIdClicked)
-      if (!clickedSite) return
-      setTargetBase(clickedSite)
-      onTargetBaseChangeRef.current?.(clickedSite)
-      onLaunchSiteClickRef.current?.(clickedSite)
-      // Fly there now, and remember it so the camera effect doesn't fly there again
-      lastViewedSiteRef.current = clickedSite.id
-      globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
-    }
 
     const last =
       ascent[
@@ -1836,7 +1886,8 @@ export default function SceneViewport({
     ascentAzimuth,
     draftParams?.siteId,
     targetBase,
-    mission?.launchSite,
+    mission,
+    draftKey,
   ])
 
   // Camera: only moves when launch site changes.
@@ -1915,6 +1966,7 @@ export default function SceneViewport({
     const flame = rocket.getObjectByName('flame')
     const UP = new THREE.Vector3(0, 1, 0)
     const heading = new THREE.Vector3()
+    const targetQuat = new THREE.Quaternion()
 
     // ASCENT TRAIL
     const trailGeom =
@@ -2019,41 +2071,119 @@ export default function SceneViewport({
 
     let raf = null
 
-    // CAMERA FOLLOW: the view glides along with the rocket, then the satellite.
-    // The camera is moved directly in 3D (no lat/lng round trip, so no wobble over the
-    // poles) with time-based easing, so it's equally smooth at any frame rate.
-    // Dragging the globe hands control back to you; zooming with the wheel keeps
-    // following but stops the automatic zoom.
+    // CAMERA FOLLOW (chase cam): the camera sits behind the rocket / satellite, a little
+    // above it and off to one side, and looks AT it, so you see it fly with the Earth below.
+    //   • scroll wheel: zooms towards / away from it and keeps following
+    //   • click or drag: stops following and gives you the normal globe controls back
+    // While following, the globe's own orbit controls are paused: every frame they would
+    // otherwise point the camera back at Earth's centre and push it an Earth-radius away.
+    // Angles are in degrees, distances in globe units (Earth radius = 100).
+    const CHASE = {
+      // Ascent: chase cam behind the rocket, a bit above and to the side
+      ascent: { distance: 22, pitch: 20, yaw: 15 },
+      // Orbit: keep the same angled view from behind, then slowly pull outward over the
+      // first part of the orbit until most of the planet is in frame (still at an angle).
+      orbit: {
+        start: { distance: 22, pitch: 20, yaw: 15, lookBlend: 0 },
+        end: { distance: 260, pitch: 24, yaw: 15, lookBlend: 0.45 }, // lookBlend: tilt the view towards Earth's centre (0–1)
+        zoomOutFraction: 0.2, // how much of one orbit the zoom-out takes (0.2 = a fifth)
+      },
+    }
+    // Blend between two camera setups; s goes 0 → 1
+    const lerpView = (a, b, s) => ({
+      distance: a.distance + (b.distance - a.distance) * s,
+      pitch: a.pitch + (b.pitch - a.pitch) * s,
+      yaw: a.yaw + (b.yaw - a.yaw) * s,
+      lookBlend: a.lookBlend + (b.lookBlend - a.lookBlend) * s,
+    })
     const FOLLOW_SMOOTHING_MS = 350 // higher = lazier camera, lower = snappier
-    const ASCENT_VIEW_ALTITUDE = 0.9 // camera distance during the climb (globe radii above the surface)
-    const ORBIT_VIEW_ALTITUDE = 1.6 // camera distance once in orbit
+    const ZOOM_LIMITS = { min: 6, max: 400 } // scroll-zoom range while following
     const camera = globe.camera()
-    const globeRadius = globe.getGlobeRadius()
-    const camDir = new THREE.Vector3()
-    const targetDir = new THREE.Vector3()
+    const controls = globe.controls()
+    const originalControlsUpdate = controls.update
+    controls.update = () => false // paused while following (restored on click or when the simulation ends)
+    const originalEnableZoom = controls.enableZoom
+    controls.enableZoom = false // our own scroll-zoom below; stops the controls saving up a zoom jump
+
+    const lookTarget = new THREE.Vector3() // eases from Earth's centre to the object
+    const up = new THREE.Vector3()
+    const fwd = new THREE.Vector3()
+    const side = new THREE.Vector3()
+    const offset = new THREE.Vector3()
+    const desired = new THREE.Vector3()
     let following = true
-    let userZoomed = false
+    let zoomFactor = 1 // scroll-wheel multiplier on the chase distance
+
+    const restoreControls = () => {
+      if (controls.update !== originalControlsUpdate) controls.update = originalControlsUpdate
+      controls.enableZoom = originalEnableZoom
+    }
     const viewEl = globeRef.current
-    const stopFollowing = () => { following = false }
-    const onWheel = () => { userZoomed = true }
+    const stopFollowing = () => {
+      following = false
+      restoreControls() // the same click/drag now works on the globe as usual
+    }
+    const onWheel = (e) => {
+      if (!following) return
+      zoomFactor *= e.deltaY > 0 ? 1.12 : 1 / 1.12
+    }
     viewEl?.addEventListener('pointerdown', stopFollowing)
     viewEl?.addEventListener('wheel', onWheel, { passive: true })
 
-    const followCamera = (position, targetAltitude, dtMs) => {
+    // position: the object's scene position; direction: roughly where it's heading
+    const globeRadius = globe.getGlobeRadius()
+    const earthCentre = new THREE.Vector3(0, 0, 0)
+
+    const followCamera = (position, direction, view, dtMs) => {
       if (!following) return
-      const k = 1 - Math.exp(-dtMs / FOLLOW_SMOOTHING_MS) // fraction of the gap to close this frame
+      const k = 1 - Math.exp(-dtMs / (view.smoothingMs ?? FOLLOW_SMOOTHING_MS)) // fraction of the gap to close this frame
 
-      const distance = camera.position.length()
-      camDir.copy(camera.position).normalize()
-      targetDir.copy(position).normalize()
-      camDir.lerp(targetDir, k).normalize()
+      // Overview: camera straight out above the satellite, looking at Earth's centre,
+      // so the satellite sits in the middle with the whole planet behind it
+      if (view.overview) {
+        const distance = THREE.MathUtils.clamp(
+          globeRadius * (1 + view.altitude) * zoomFactor,
+          globeRadius * 1.15,
+          globeRadius * 8
+        )
+        desired.copy(position).normalize().multiplyScalar(distance)
+        camera.position.lerp(desired, k)
+        lookTarget.lerp(earthCentre, k)
+        camera.lookAt(lookTarget)
+        return
+      }
 
-      const targetDistance = globeRadius * (1 + targetAltitude)
-      const nextDistance = userZoomed ? distance : distance + (targetDistance - distance) * k
+      // Local frame at the object: up = away from Earth, fwd = direction of travel along the surface
+      up.copy(position).normalize()
+      fwd.copy(direction).addScaledVector(up, -direction.dot(up))
+      if (fwd.lengthSq() < 1e-9) return
+      fwd.normalize()
+      side.crossVectors(fwd, up).normalize()
 
-      camera.position.copy(camDir).multiplyScalar(nextDistance)
-      camera.lookAt(0, 0, 0)
+      const pitch = THREE.MathUtils.degToRad(view.pitch)
+      const yaw = THREE.MathUtils.degToRad(view.yaw)
+      // behind (−fwd), swung sideways by yaw, raised by pitch
+      offset
+        .copy(fwd).multiplyScalar(-Math.cos(yaw))
+        .addScaledVector(side, Math.sin(yaw))
+        .multiplyScalar(Math.cos(pitch))
+        .addScaledVector(up, Math.sin(pitch))
+        .normalize()
+
+      const distance = THREE.MathUtils.clamp(view.distance * zoomFactor, ZOOM_LIMITS.min, ZOOM_LIMITS.max)
+      desired.copy(position).addScaledVector(offset, distance)
+      camera.position.lerp(desired, k)
+      // Look at the object, or partway from it towards Earth's centre (keeps the planet in frame)
+      const aim = desired.copy(position).multiplyScalar(1 - (view.lookBlend ?? 0))
+      lookTarget.lerp(aim, k)
+      camera.lookAt(lookTarget)
     }
+    const ascentDirection = new THREE.Vector3(
+      coords[coords.length - 1].x - coords[0].x,
+      coords[coords.length - 1].y - coords[0].y,
+      coords[coords.length - 1].z - coords[0].z
+    )
+    const orbitDirection = new THREE.Vector3()
 
     const tick = () => {
       const now =
@@ -2067,6 +2197,9 @@ export default function SceneViewport({
       simMs +=
         dt *
         timeScaleRef.current
+
+      // Capped frame time for camera / rotation easing (a single slow frame shouldn't make it lurch)
+      const camDt = Math.min(dt, 50)
 
       // ---- ASCENT ----
       if (!ascentDone) {
@@ -2125,10 +2258,14 @@ export default function SceneViewport({
           z
         )
         // Point the nose along the direction of travel (straight up at liftoff)
-        heading.set(b.x - a.x, b.y - a.y, b.z - a.z)
-        if (heading.lengthSq() > 1e-9) rocket.quaternion.setFromUnitVectors(UP, heading.normalize())
+        const lookAhead = coords[Math.min(i + 4, coords.length - 1)]
+        heading.set(lookAhead.x - x, lookAhead.y - y, lookAhead.z - z)
+        if (heading.lengthSq() > 1e-9) {
+          targetQuat.setFromUnitVectors(UP, heading.normalize())
+          rocket.quaternion.slerp(targetQuat, Math.min(1, camDt / 120)) // ease the turn
+        }
         if (flame) flame.scale.set(1, 0.8 + Math.random() * 0.5, 1) // flicker
-        followCamera(rocket.position, ASCENT_VIEW_ALTITUDE, dt)
+        followCamera(rocket.position, ascentDirection, CHASE.ascent, camDt)
 
         // Update trail.
         const pos =
@@ -2174,6 +2311,7 @@ export default function SceneViewport({
           progress >= 1
         ) {
           ascentDone = true
+          zoomFactor = 1 // fresh zoom for the orbit overview
 
           rocket.visible =
             false
@@ -2240,7 +2378,20 @@ export default function SceneViewport({
         )
         // Keep the dish pointing at Earth
         satellite.quaternion.setFromUnitVectors(UP, satellite.position.clone().normalize())
-        followCamera(satellite.position, ORBIT_VIEW_ALTITUDE, dt)
+        // Heading = towards a point a little further along the orbit (exact, so the camera doesn't shake)
+        const ahead = orbitPosition({
+          altKm: flight.altKm,
+          inclinationDeg: flight.inclinationDeg,
+          raanDeg: flight.raanDeg,
+          theta: theta + 0.02,
+        })
+        const aheadCoords = globe.getCoords(ahead.lat, ahead.lng, ahead.alt)
+        orbitDirection.set(aheadCoords.x, aheadCoords.y, aheadCoords.z).sub(satellite.position)
+        // Slow zoom-out over the first `zoomOutFraction` of an orbit (eased in and out)
+        const orbitFraction = (omega * orbitTime) / (2 * Math.PI)
+        const zoomT = Math.min(1, orbitFraction / CHASE.orbit.zoomOutFraction)
+        const zoomS = zoomT * zoomT * (3 - 2 * zoomT)
+        followCamera(satellite.position, orbitDirection, lerpView(CHASE.orbit.start, CHASE.orbit.end, zoomS), camDt)
 
         /*
          * Green landing zone:
@@ -2302,6 +2453,9 @@ export default function SceneViewport({
       }
       viewEl?.removeEventListener('pointerdown', stopFollowing)
       viewEl?.removeEventListener('wheel', onWheel)
+      // Hand the normal globe controls back, centred on the Earth again
+      restoreControls()
+      controls.target.set(0, 0, 0)
 
       globe.scene().remove(
         rocket,
