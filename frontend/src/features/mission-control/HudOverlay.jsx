@@ -188,8 +188,8 @@ export default function HudOverlay({
   }
 
   // Debris is on unless the state says otherwise
-  const debrisOn = shellsVisible.debris ?? true
-  const issOn = shellsVisible.iss ?? true
+  const debrisOn = shellsVisible.debris ?? false
+  const issOn = shellsVisible.iss ?? false
 
   return (
     <div className={classes.hud}>
