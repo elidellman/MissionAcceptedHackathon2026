@@ -34,12 +34,18 @@ export default function MissionControl() {
     polar: false,
     sso: false,
     debris: true,
+    iss: true,
   })
   const [simulation, setSimulation] = useState(null)
   const [timeScale, setTimeScale] = useState(DEFAULT_TIME_SCALE)
 
   // Launch site whose live feed is open (set by clicking a site that has `liveFeed` on the globe)
   const [liveFeedSite, setLiveFeedSite] = useState(null)
+
+  // Hiding the ISS also closes its live video
+  useEffect(() => {
+    if (shellsVisible.iss === false) setLiveFeedSite((current) => (current?.id === ISS.id ? null : current))
+  }, [shellsVisible.iss])
 
   // Keep a launch-site live feed tied to the currently selected site.
   // The ISS feed is independent of launch-site selection, so it stays open.

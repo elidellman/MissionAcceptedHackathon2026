@@ -334,7 +334,11 @@ export default function SceneViewport({
   const applyLayers = () => {
     const globe = globeInstance.current
     if (!globe) return
-    const { position, track } = issData.current
+    const { position: livePosition, track: liveTrack } = issData.current
+    // ISS toggle: when hidden, keep polling but draw nothing
+    const issOn = shellsVisibleRef.current?.iss ?? true
+    const position = issOn ? livePosition : null
+    const track = issOn ? liveTrack : []
     const issPaths = track.length > 1 ? [
       {
         name: 'ISS orbit (past)',
@@ -565,6 +569,11 @@ export default function SceneViewport({
       }
     })
   }, [shellsVisible])
+
+  // ISS toggle: redraw the ISS layers right away (no camera move)
+  useEffect(() => {
+    applyLayers()
+  }, [shellsVisible.iss])
 
   // Static drawing: ascent path, target orbit, launch-site markers.
   // Depends only on the site and target orbit, never on the selected launch window.
