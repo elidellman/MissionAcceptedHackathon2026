@@ -14,15 +14,15 @@ import {
   mockTrajectoryResponse,
 } from '../features/mission-control/mockData.js'
 
-// TODO(API): set to false once the Flask endpoints below exist.
-// While true, the app uses fake data from mockData.js and never calls the backend.
-export const USE_MOCK = true
+// false = real Flask backend (run `flask --app flaskr run` in backend/).
+// Set back to true to demo without the backend: the app then uses fake data from mockData.js.
+export const USE_MOCK = false
 
 export const ENDPOINTS = {
-  test: '/api/test', //                                  exists today
-  launchSites: '/api/launch-sites', //                   TODO(API)
-  launchWindows: '/api/launch-windows', //               TODO(API)  ?site_id=&orbit=&inclination_deg=&altitude_km=&days=
-  trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`, // TODO(API)
+  test: '/api/test',
+  launchSites: '/api/launch-sites',
+  launchWindows: '/api/launch-windows', // ?site_id=&orbit=&inclination_deg=&altitude_km=&days=
+  trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`,
 }
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms))
