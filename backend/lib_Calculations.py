@@ -124,18 +124,40 @@ Params:
 def get_intersection_time(launchSite, intersection, current_time):
     longitude = LaunchSites[launchSite]["longitude"]
 
-    delta_longitude = intersection - longitude
+    # Calculate Julian Date
+    julian_date = current_time.timestamp() / 86400 + 2440587.5
 
-    # Normalize to 0–360 so we get the next occurrence
-    delta_longitude %= 360
+    # Calculate Greenwich Mean Sidereal Time
+    T = (julian_date - 2451545.0) / 36525.0
 
+    gmst = (
+        280.46061837
+        + 360.98564736629 * (julian_date - 2451545.0)
+        + 0.000387933 * T**2
+        - T**3 / 38710000.0
+    )
+
+    # Normalize GMST to 0–360 degrees
+    gmst %= 360
+
+    # Calculate current inertial longitude of the launch site
+    current_inertial_longitude = (gmst + longitude) % 360
+
+    # Calculate the longitude difference
+    delta_longitude = (intersection - current_inertial_longitude) % 360
+
+    # Convert degrees to radians
     delta_longitude_rad = math.radians(delta_longitude)
 
+    # Calculate the time difference in seconds
     time_difference = delta_longitude_rad / EARTH_ROTATION_RATE
 
-    return current_time + timedelta(
+    # Calculate the intersection time
+    intersection_time = current_time + timedelta(
         seconds=time_difference
     )
+
+    return intersection_time
 
 """
 Creates a time window around the intersection time.
