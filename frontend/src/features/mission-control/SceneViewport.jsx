@@ -803,10 +803,14 @@ export default function SceneViewport({
     if (!globe) return
 
     const {
-      position,
-      track,
+      position: livePosition,
+      track: liveTrack,
     } = issData.current
 
+    // ISS toggle: when hidden, keep polling but draw nothing
+    const issOn = shellsVisibleRef.current?.iss ?? true
+    const position = issOn ? livePosition : null
+    const track = issOn ? liveTrack : []
     const issPaths =
       track.length > 1
         ? [
@@ -1283,23 +1287,27 @@ export default function SceneViewport({
     )
   }, [shellsVisible])
 
-  /*
-   * Static drawing:
-   *
-   *   launch site
-   *       ↓
-   *   ascent
-   *       ↓
-   *   target orbit
-   *
-   * The ascent and orbit share the exact same orbital plane.
-   */
+  // ISS toggle: redraw the ISS layers right away (no camera move)
   useEffect(() => {
-    const globe =
-      globeInstance.current
+    applyLayers()
+  }, [shellsVisible.iss])
 
+  // Static drawing: ascent path, target orbit, launch-site markers.
+  // Depends only on the site and target orbit, never on the selected launch window.
+  useEffect(() => {
+    const globe = globeInstance.current
     if (!globe) return
-
+  // Don't draw a mission trajectory until the submitted
+    // mission has all the data required to construct it.
+    if (
+      !mission ||
+      !Number.isFinite(targetAltitude) ||
+      targetAltitude <= 0 ||
+      !Number.isFinite(targetInclination) ||
+      !Number.isFinite(ascentAzimuth)
+    ) {
+      return
+    }
     const activeTargetBase =
       (
         draftParams?.siteId &&

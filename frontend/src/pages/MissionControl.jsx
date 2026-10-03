@@ -33,7 +33,8 @@ export default function MissionControl() {
     leo: false,
     polar: false,
     sso: false,
-    debris: true,
+    debris: false,
+    iss: false,
   })
   const [simulation, setSimulation] = useState(null)
   const [timeScale, setTimeScale] = useState(DEFAULT_TIME_SCALE)
@@ -79,6 +80,8 @@ export default function MissionControl() {
     return () => {
       cancelled = true
     }
+
+
   }, [submittedParams])
 
   // Load the trajectory for the selected launch window.
@@ -138,10 +141,15 @@ export default function MissionControl() {
     setTimeScale(DEFAULT_TIME_SCALE)
   }, [])
 
-  const handleSubmit = useCallback((next) => {
-    setSubmittedParams(next)
-    setPreviewParams(next)
-  }, [])
+  const handleSubmit = (params) => {
+  setMission(null)
+  setWindows([])
+  setSelectedId(null)
+  setTrajectory(null)
+
+  setSubmittedParams(params)
+  setPreviewParams(params)
+}
 
   return (
     <div className={classes.root}>
