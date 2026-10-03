@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   ActionIcon,
   Alert,
+  Badge,
   Button,
   Group,
   NumberInput,
@@ -18,7 +19,8 @@ import classes from './MissionControl.module.css'
 
 /**
  * MissionInputPanel — collapsible panel on the LEFT of the 3D render.
- * The user picks a launch site + target orbit and hits "Calculate windows".
+ * The user picks a launch site + orbit type (+ days to search) and hits "Calculate windows".
+ * Inclination and altitude are NOT editable: they come from ORBIT_PRESETS in launchConfig.js.
  * Weather is NOT entered here: the backend fills it in automatically per window.
  *
  * Props:
@@ -40,8 +42,7 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
   const site = getSite(draft.siteId)
   const incl = Number(draft.inclinationDeg)
   const reachable = Number.isFinite(incl) && isDirectlyReachable(incl, site.lat)
-  const valid =
-    Number.isFinite(incl) && incl >= 0 && incl <= 180 && Number(draft.altitudeKm) >= 160 && Number(draft.days) >= 1
+  const valid = Number(draft.days) >= 1
 
   if (!open) {
     return (
@@ -95,25 +96,10 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
               <SegmentedControl fullWidth data={['LEO', 'Polar', 'SSO']} value={draft.orbit} onChange={pickOrbit} />
             </div>
 
-            <NumberInput
-              label="Inclination (°)"
-              description={`Tilt of the orbit vs. the equator. ${draft.orbit} preset: ${ORBIT_PRESETS[draft.orbit].hint}`}
-              value={draft.inclinationDeg}
-              onChange={set('inclinationDeg')}
-              min={0}
-              max={180}
-              step={0.1}
-              decimalScale={2}
-            />
-
-            <NumberInput
-              label="Target altitude (km)"
-              value={draft.altitudeKm}
-              onChange={set('altitudeKm')}
-              min={160}
-              max={2000}
-              hideControls
-            />
+            <Group gap="xs">
+              <Badge variant="outline" color="gray">Inclination {draft.inclinationDeg}°</Badge>
+              <Badge variant="outline" color="gray">Altitude {draft.altitudeKm} km</Badge>
+            </Group>
 
             <NumberInput
               label="Search ahead (days)"

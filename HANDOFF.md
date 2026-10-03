@@ -23,7 +23,7 @@ Who works where, which API names the frontend expects, and what's still fake.
   | `cape-canaveral` | Cape Canaveral SLC-40 (Florida) | 28.5618 | -80.5770 |
 
   Defined once in `frontend/src/features/mission-control/launchConfig.js`. The backend must use the same ids.
-- **User input** is the target orbit: orbit type, inclination (°), altitude (km), and how many days to search. No rocket mass or other vehicle data.
+- **User input** is just: launch site, orbit type (LEO / Polar / SSO) and how many days to search. Inclination and altitude are fixed per orbit type (`ORBIT_PRESETS` in `launchConfig.js`: LEO 45.1° / 500 km, Polar 90° / 700 km, SSO 98.1° / 700 km) and are still sent to the backend as `inclination_deg` / `altitude_km`. No rocket mass or other vehicle data.
 - **Weather is automatic.** The backend fills it in for each window; the user never types it.
 - **Physics note:** a rocket can't directly reach an inclination lower than its launch site's latitude. Nova Scotia is at 45.3°, so LEO at 45.1° is *not* directly reachable from there (the panel shows a warning). SSO and Polar are fine from both sites.
 
@@ -114,8 +114,8 @@ Query params (all sent by the Mission Inputs panel):
 |---|---|---|
 | `site_id` | `nova-scotia` | `nova-scotia` or `cape-canaveral` |
 | `orbit` | `SSO` | `LEO`, `Polar` or `SSO` (label only; use `inclination_deg` for the maths) |
-| `inclination_deg` | `98.1` | Target orbit inclination, 0–180 |
-| `altitude_km` | `700` | Target orbit altitude, 160–2000 |
+| `inclination_deg` | `98.1` | Target orbit inclination (fixed per orbit type) |
+| `altitude_km` | `700` | Target orbit altitude (fixed per orbit type) |
 | `days` | `7` | How many days ahead to search, 1–30 |
 ```json
 {
@@ -171,6 +171,6 @@ If you rename an endpoint or a field, update `ENDPOINTS` or the mapper functions
 | Team roles ("Team member") | `pages/Team.jsx` | Real roles / links |
 | Fake trajectory (simple arc, not real physics) | `mockData.js` → `mockTrajectoryResponse` | Backend trajectory endpoint |
 
-**Real and finished:** nav bar, routing, Home / Launch Info / About page text, the Mission Inputs panel (2 sites, orbit type, inclination, altitude, days, reachability warning), countdown timer, window cards and the GO / CAUTION / NO-GO badges (they display whatever the data says).
+**Real and finished:** nav bar, routing, Home / Launch Info / About page text, the Mission Inputs panel (2 sites, orbit type, days, reachability warning), countdown timer, window cards and the GO / CAUTION / NO-GO badges (they display whatever the data says).
 
 **Not built yet** (Track 2 bonus ideas): a "Viewing Map" of where the ascent is visible from, and accounting for vehicle flight duration.

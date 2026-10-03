@@ -6,7 +6,7 @@ Route: `/mission-control`. Full team guide: **`/HANDOFF.md`** at the repo root.
 features/mission-control/
 ├── SceneViewport.jsx         ★ 3D scene goes here (fills the whole page). Search "TODO(3D)"
 ├── HudOverlay.jsx            ← 2D panels on top (countdown, windows)
-├── MissionInputPanel.jsx     ← collapsible input panel on the left (site, orbit, inclination, altitude)
+├── MissionInputPanel.jsx     ← collapsible input panel on the left (site, orbit type, days)
 ├── launchConfig.js           ← the 2 launch sites + orbit presets
 ├── MissionControl.module.css ← styles for both
 └── mockData.js               ← PLACEHOLDER fake API responses
