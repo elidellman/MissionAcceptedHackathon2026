@@ -29,7 +29,7 @@ openmeteo = openmeteo_requests.Client(
 # =========================================================
 
 LAUNCH_SITES = {
-    "nova-scotia": {
+    "SpacePort": {
         "name": "Spaceport Nova Scotia",
         "latitude": 45.303559,
         "longitude": -60.982891
@@ -69,19 +69,19 @@ def get_weather_forecast(latitude, longitude, days=16):
         "longitude": longitude,
 
         "hourly": [
-             "temperature_2m",
-    "cloud_cover",
-    "cloud_cover_low",
-    "cloud_cover_mid",
-    "cloud_cover_high",
-    "visibility",
-    "rain",
-    "weather_code",
-    "wind_speed_10m",
-    "wind_gusts_10m",
-    "wind_speed_80m",
-    "wind_speed_120m",
-    "wind_speed_180m"
+            "temperature_2m",
+            "cloud_cover",
+            "cloud_cover_low",
+            "cloud_cover_mid",
+            "cloud_cover_high",
+            "visibility",
+            "rain",
+            "weather_code",
+            "wind_speed_10m",
+            "wind_gusts_10m",
+            "wind_speed_80m",
+            "wind_speed_120m",
+            "wind_speed_180m"
         ],
 
         "forecast_days": days,
@@ -119,19 +119,19 @@ def get_weather_forecast(latitude, longitude, days=16):
     weather = pd.DataFrame({
         "time": times,
 
-   "temperature": hourly.Variables(0).ValuesAsNumpy(),
-    "cloud_cover": hourly.Variables(1).ValuesAsNumpy(),
-    "cloud_cover_low": hourly.Variables(2).ValuesAsNumpy(),
-    "cloud_cover_mid": hourly.Variables(3).ValuesAsNumpy(),
-    "cloud_cover_high": hourly.Variables(4).ValuesAsNumpy(),
-    "visibility": hourly.Variables(5).ValuesAsNumpy(),
-    "rain": hourly.Variables(6).ValuesAsNumpy(),
-    "weather_code": hourly.Variables(7).ValuesAsNumpy(),
-    "wind_speed": hourly.Variables(8).ValuesAsNumpy(),
-    "wind_gusts": hourly.Variables(9).ValuesAsNumpy(),
-    "wind_80m": hourly.Variables(10).ValuesAsNumpy(),
-    "wind_120m": hourly.Variables(11).ValuesAsNumpy(),
-    "wind_180m": hourly.Variables(12).ValuesAsNumpy()
+        "temperature": hourly.Variables(0).ValuesAsNumpy(),
+        "cloud_cover": hourly.Variables(1).ValuesAsNumpy(),
+        "cloud_cover_low": hourly.Variables(2).ValuesAsNumpy(),
+        "cloud_cover_mid": hourly.Variables(3).ValuesAsNumpy(),
+        "cloud_cover_high": hourly.Variables(4).ValuesAsNumpy(),
+        "visibility": hourly.Variables(5).ValuesAsNumpy(),
+        "rain": hourly.Variables(6).ValuesAsNumpy(),
+        "weather_code": hourly.Variables(7).ValuesAsNumpy(),
+        "wind_speed": hourly.Variables(8).ValuesAsNumpy(),
+        "wind_gusts": hourly.Variables(9).ValuesAsNumpy(),
+        "wind_80m": hourly.Variables(10).ValuesAsNumpy(),
+        "wind_120m": hourly.Variables(11).ValuesAsNumpy(),
+        "wind_180m": hourly.Variables(12).ValuesAsNumpy()
     })
 
     return weather
@@ -142,7 +142,6 @@ def get_weather_forecast(latitude, longitude, days=16):
 # =========================================================
 
 def evaluate_weather(hour):
-    
 
     checks = {}
 
@@ -206,7 +205,7 @@ def evaluate_weather(hour):
         )
     }
 
-    #weather code
+    # Weather code
     weather_code = int(hour["weather_code"])
 
     thunderstorm_codes = {
@@ -214,22 +213,24 @@ def evaluate_weather(hour):
     }
 
     checks["thunderstorm"] = {
-    "value": weather_code,
-    "status": (
-        "FAIL"
-        if weather_code in thunderstorm_codes
-        else "PASS"
+        "value": weather_code,
+        "status": (
+            "FAIL"
+            if weather_code in thunderstorm_codes
+            else "PASS"
         )
     }
 
+    # =====================================================
+    # Cloud ceiling proxy
+    #
+    # Open-Meteo provides cloud coverage by atmospheric
+    # layer, but not a reliable 5000-ft ceiling measurement
+    # for every forecast model/location.
+    #
+    # Low cloud cover is therefore used as a proxy.
+    # =====================================================
 
-# Cloud ceiling proxy
-#
-# Open-Meteo provides cloud coverage by atmospheric layer,
-# but not a reliable 5000-ft ceiling measurement for every
-# forecast model/location.
-#
-# Low cloud cover is therefore used as a proxy.
     low_cloud = float(hour["cloud_cover_low"])
 
     checks["cloud_ceiling_proxy"] = {
@@ -243,8 +244,7 @@ def evaluate_weather(hour):
         )
     }
 
-
-    #wind gust 
+    # Wind gust
     gust = float(hour["wind_gusts"])
 
     checks["wind_gusts"] = {
@@ -318,6 +318,7 @@ def evaluate_weather_at_time(weather, launch_time):
 
     return result, closest["time"]
 
+
 # =========================================================
 # Check weather for orbital windows
 # =========================================================
@@ -370,7 +371,6 @@ def check_orbital_windows(site_id, windows):
                 utc=True
             ).isoformat(),
 
-    
             "weather": weather_result["status"],
 
             "weather_time": (
@@ -385,6 +385,7 @@ def check_orbital_windows(site_id, windows):
         })
 
     return results
+
 
 # =========================================================
 # TEST
@@ -403,7 +404,7 @@ if __name__ == "__main__":
     # NOT USING OLIVERA TIMES HE GAVE ME
     # -----------------------------------------------------
 
-    site_id = "nova-scotia"
+    site_id = "SpacePort"
 
     launch_time = "2026-10-03T14:00:00Z"
 
@@ -469,7 +470,7 @@ if __name__ == "__main__":
     ]
 
     orbital_results = check_orbital_windows(
-        "nova-scotia",
+        "SpacePort",
         test_windows
     )
 
@@ -491,4 +492,3 @@ if __name__ == "__main__":
             )
 
         print()
-
