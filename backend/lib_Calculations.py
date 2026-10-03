@@ -13,17 +13,20 @@ EARTH_ROTATION_RATE = 7.2921159e-5  # radians/second
 OrbitTypes = {
     "LEO": {
         "inclination": 45.1,
-        "altitude": 500_000       # 500 km
+        "altitude": 500_000,       # 500 km
+        "orbital_direction": "prograde"
     },
 
     "SSO": {
         "inclination": 98.1,
-        "altitude": 600_000       # 600 km
+        "altitude": 600_000,       # 600 km
+        "orbital_direction": "retrograde"
     },
 
     "POLAR": {
         "inclination": 87.9,
-        "altitude": 500_000       # 500 km
+        "altitude": 500_000,       # 500 km
+        "orbital_direction": "prograde"
     }
 }
 
@@ -192,29 +195,47 @@ Params:
     raan [float]: The right ascension of the ascending node in degrees.
     current_time [float]: The current time in seconds since epoch.
     window_minutes [int]: The width of the window in minutes.
+    numberOfWindows [int]: The number of windows to calculate.
 """
 
-def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10):
-    intersections = get_plane_intersections(launchSite, inclination, raan)
+def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10, numberOfWindows=2):
+    intersections = get_plane_intersections(
+        launchSite,
+        inclination,
+        raan
+    )
 
     if intersections is None:
         return []
 
     windows = []
 
-    for intersection in intersections.values():
-        intersection_time = get_intersection_time(
-            launchSite,
-            intersection,
-            current_time
-        )
+    search_time = current_time
+
+    while len(windows) < numberOfWindows:
+
+        next_times = []
+
+        for intersection in intersections.values():
+            intersection_time = get_intersection_time(
+                launchSite,
+                intersection,
+                search_time
+            )
+
+            next_times.append(intersection_time)
+
+        # Find the next upcoming alignment
+        next_time = min(next_times)
 
         window = create_window(
-            intersection_time,
+            next_time,
             window_minutes
         )
 
         windows.append(window)
 
-    windows.sort(key=lambda window: window["start"])
+        # Move forward so we don't find the same alignment again
+        search_time = next_time + timedelta(seconds=1)
+
     return windows

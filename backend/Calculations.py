@@ -1,6 +1,6 @@
 import math
 
-from backend.lib_Calculations import OrbitTypes, get_Azimuth, get_AdjustedAzimuth, get_window_times
+from lib_Calculations import OrbitTypes, get_Azimuth, get_AdjustedAzimuth, get_window_times
 
 
 def calculate_launch_windows(
@@ -9,7 +9,8 @@ def calculate_launch_windows(
     raan,
     current_time,
     window_minutes=10,
-    vehicle_duration=0
+    vehicle_duration=0,
+    numberOfWindows=2
 ):
     # Get orbital parameters
     inclination = OrbitTypes[orbitType]["inclination"]
@@ -32,7 +33,8 @@ def calculate_launch_windows(
         inclination,
         raan,
         current_time,
-        window_minutes
+        window_minutes,
+        numberOfWindows
     )
 
     return {
