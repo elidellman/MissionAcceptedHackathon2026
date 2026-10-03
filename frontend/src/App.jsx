@@ -1,48 +1,25 @@
-import { useState } from 'react'
-import { Button, Card, Container, Group, Loader, Stack, Text, Title } from '@mantine/core'
-import './App.css'
+import { Route, Routes } from 'react-router-dom'
+import Layout from './components/Layout.jsx'
+import Home from './pages/Home.jsx'
+import MissionControl from './pages/MissionControl.jsx'
+import Info from './pages/Info.jsx'
+import Team from './pages/Team.jsx'
+import About from './pages/About.jsx'
+import NotFound from './pages/NotFound.jsx'
+import { ROUTES } from './routes.js'
 
 function App() {
-  const [response, setResponse] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const callTestEndpoint = async () => {
-    setLoading(true)
-    setResponse('')
-
-    try {
-      const result = await fetch('/api/test')
-      const data = await result.json()
-      setResponse(JSON.stringify(data, null, 2))
-    } catch (error) {
-      setResponse(`Error: ${error.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
-    <Container size="sm" py="xl">
-      <Card withBorder radius="md" p="xl">
-        <Stack gap="lg" align="center">
-          <Title order={1} c="black" size="h2">Mission Accepted 2026 Hackathon</Title>
-
-          <Group>
-            <Button onClick={callTestEndpoint} loading={loading}>
-              Call /api/test
-            </Button>
-          </Group>
-
-          {response && (
-            <Card withBorder radius="sm" p="md" bg="gray.0">
-              <Text component="pre" size="sm" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                {response}
-              </Text>
-            </Card>
-          )}
-        </Stack>
-      </Card>
-    </Container>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path={ROUTES.home.path} element={<Home />} />
+        <Route path={ROUTES.missionControl.path} element={<MissionControl />} />
+        <Route path={ROUTES.info.path} element={<Info />} />
+        <Route path={ROUTES.team.path} element={<Team />} />
+        <Route path={ROUTES.about.path} element={<About />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   )
 }
 
