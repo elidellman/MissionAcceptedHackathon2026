@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request
 from Calculations import calculate_launch_windows
 from lib_Calculations import LaunchSites, get_plane_intersections
 from weather import rate_windows
+from debris import screen
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,6 +208,21 @@ def create_app(test_config=None):
         return jsonify({
             'windows': windows
         })
+
+    # -------------------------
+    # DEBRIS CHECK
+    # -------------------------
+    @app.get('/api/debris')
+    def debris_check():
+        try:
+            lat = float(request.args['lat'])
+            lon = float(request.args['lon'])
+            alt_km = float(request.args['alt_km'])
+            when = datetime.fromisoformat(request.args['time'].replace('Z', '+00:00'))
+            radius = float(request.args.get('radius_km', 10))
+        except (KeyError, ValueError):
+            return jsonify(error='need lat, lon, alt_km, time (ISO UTC)'), 400
+        return jsonify(screen(lat, lon, alt_km, when, radius))
 
     @app.route('/hello')
     def hello():
