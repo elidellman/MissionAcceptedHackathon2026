@@ -52,6 +52,20 @@ export default function MissionControl() {
     })
   }, [previewParams.siteId])
 
+  // Any change to the Mission Inputs stops the simulation (rocket, satellite, trail);
+  // SceneViewport also hides the old path and orbit until Calculate is pressed again.
+  const draftKey = JSON.stringify([
+    previewParams.siteId,
+    previewParams.orbit,
+    Number(previewParams.inclinationDeg),
+    Number(previewParams.altitudeKm),
+    Number(previewParams.days),
+  ])
+  useEffect(() => {
+    setSimulation(null)
+    setTimeScale(DEFAULT_TIME_SCALE)
+  }, [draftKey])
+
   // Load mission + windows whenever the user submits a real mission change.
   useEffect(() => {
     if (!submittedParams) return
