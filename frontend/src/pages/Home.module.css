@@ -1,0 +1,70 @@
+/* ── Hero ─────────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: calc(100dvh - 60px); /* 60px = header */
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Earth + satellite image, faded and slowly drifting */
+.heroBg {
+  position: absolute;
+  inset: -2%;
+  background: url('../assets/space/home-earth-satellite.jpg') center right / cover no-repeat;
+  opacity: 0.55;
+  z-index: -2;
+  animation: drift 40s ease-in-out infinite alternate;
+}
+
+/* Darkens the left side for readable text and fades the bottom into the page */
+.heroShade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, #07090f 0%, rgba(7, 9, 15, 0.92) 30%, rgba(7, 9, 15, 0.35) 62%, rgba(7, 9, 15, 0.15) 100%),
+    linear-gradient(180deg, rgba(7, 9, 15, 0) 70%, #07090f 100%);
+}
+
+@keyframes drift {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.06) translate(-1%, -1%); }
+}
+
+/* Staggered entrance for hero content */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes rise {
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Feature cards ────────────────────────────────── */
+.features {
+  position: relative;
+  margin-top: -80px; /* overlap the bottom of the hero slightly */
+  padding-bottom: 64px;
+}
+
+.card {
+  height: 100%;
+  background: rgba(14, 18, 28, 0.72);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 200ms ease, border-color 200ms ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 140, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroBg { animation: none; }
+  .reveal { animation: none; opacity: 1; transform: none; }
+}

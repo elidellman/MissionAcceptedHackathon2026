@@ -1,6 +1,7 @@
-import { Badge, Button, Container, Group, SimpleGrid, Stack, Text, ThemeIcon, Title } from '@mantine/core'
+import { Badge, Button, Container, Group, Paper, SimpleGrid, Stack, Text, ThemeIcon, Title } from '@mantine/core'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '../routes.js'
+import classes from './Home.module.css'
 
 const FEATURES = [
   {
@@ -20,42 +21,60 @@ const FEATURES = [
   },
 ]
 
+// Stagger helper for the entrance animation
+const delay = (i) => ({ animationDelay: `${0.15 + i * 0.12}s` })
+
 export default function Home() {
   return (
-    <Container size="lg" py={{ base: 40, sm: 80 }}>
-      <Stack gap="xl" align="flex-start">
-        <Badge variant="light" size="lg">Mission Accepted 2026 · Challenge 2</Badge>
+    <>
+      <section className={classes.hero}>
+        <div className={classes.heroBg} aria-hidden />
+        <div className={classes.heroShade} aria-hidden />
 
-        <Title order={1} fz={{ base: 36, sm: 56 }} lh={1.1} maw={760}>
-          Find the right moment to launch.
-        </Title>
+        <Container size="lg" w="100%" py={{ base: 48, sm: 96 }}>
+          <Stack gap="xl" align="flex-start" maw={680}>
+            <Badge variant="light" size="lg" className={classes.reveal} style={delay(0)}>
+              Mission Accepted 2026 · Challenge 2
+            </Badge>
 
-        <Text size="lg" c="dimmed" maw={620}>
-          Mission Control matches a rocket's target orbit with Earth's rotation, launch-site
-          location and weather to show when a launch can happen and what the path to orbit looks like.
-        </Text>
+            <Title order={1} fz={{ base: 40, sm: 64 }} lh={1.05} className={classes.reveal} style={delay(1)}>
+              Find the right moment to launch.
+            </Title>
 
-        <Group>
-          <Button component={Link} to={ROUTES.missionControl.path} size="md">
-            Open Mission Control
-          </Button>
-          <Button component={Link} to={ROUTES.info.path} size="md" variant="default">
-            How launch windows work
-          </Button>
-        </Group>
-      </Stack>
+            <Text size="lg" c="gray.4" className={classes.reveal} style={delay(2)}>
+              Mission Control matches a rocket's target orbit with Earth's rotation, launch-site location and
+              weather to show when a launch can happen and what the path to orbit looks like.
+            </Text>
 
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg" mt={{ base: 48, sm: 96 }}>
-        {FEATURES.map((f) => (
-          <Stack key={f.title} gap="xs">
-            <ThemeIcon size={44} radius="md" variant="light" fz={22}>
-              {f.icon}
-            </ThemeIcon>
-            <Text fw={700}>{f.title}</Text>
-            <Text size="sm" c="dimmed">{f.body}</Text>
+            <Group className={classes.reveal} style={delay(3)}>
+              <Button component={Link} to={ROUTES.missionControl.path} size="md">
+                Open Mission Control
+              </Button>
+              <Button component={Link} to={ROUTES.info.path} size="md" variant="default">
+                How launch windows work
+              </Button>
+            </Group>
           </Stack>
-        ))}
-      </SimpleGrid>
-    </Container>
+        </Container>
+      </section>
+
+      <Container size="lg" className={classes.features}>
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+          {FEATURES.map((f, i) => (
+            <Paper key={f.title} p="lg" radius="md" className={`${classes.card} ${classes.reveal}`} style={delay(4 + i)}>
+              <Stack gap="xs">
+                <ThemeIcon size={44} radius="md" variant="light" fz={22}>
+                  {f.icon}
+                </ThemeIcon>
+                <Text fw={700}>{f.title}</Text>
+                <Text size="sm" c="dimmed">
+                  {f.body}
+                </Text>
+              </Stack>
+            </Paper>
+          ))}
+        </SimpleGrid>
+      </Container>
+    </>
   )
 }

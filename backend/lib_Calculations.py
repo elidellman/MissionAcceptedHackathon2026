@@ -13,17 +13,20 @@ EARTH_ROTATION_RATE = 7.2921159e-5  # radians/second
 OrbitTypes = {
     "LEO": {
         "inclination": 45.1,
-        "altitude": 500_000       # 500 km
+        "altitude": 500_000,       # 500 km
+        "orbital_direction": "prograde"
     },
 
     "SSO": {
         "inclination": 98.1,
-        "altitude": 600_000       # 600 km
+        "altitude": 600_000,       # 600 km
+        "orbital_direction": "retrograde"
     },
 
     "POLAR": {
         "inclination": 87.9,
-        "altitude": 500_000       # 500 km
+        "altitude": 500_000,       # 500 km
+        "orbital_direction": "prograde"
     }
 }
 
@@ -66,7 +69,10 @@ Params:
     vehicleDuration [float]: The duration of the vehicle's flight in seconds.
 """
 
-def get_AdjustedAzimuth(azimuth, vehicleDuration):
+def get_AdjustedAzimuth(azimuth, vehicleDuration=None):
+    if vehicleDuration is None:
+        return azimuth
+
     adjusted_azimuth = azimuth - (EARTH_ROTATION_RATE * vehicleDuration)
     return adjusted_azimuth
 
@@ -124,18 +130,40 @@ Params:
 def get_intersection_time(launchSite, intersection, current_time):
     longitude = LaunchSites[launchSite]["longitude"]
 
-    delta_longitude = intersection - longitude
+    # Calculate Julian Date
+    julian_date = current_time.timestamp() / 86400 + 2440587.5
 
-    # Normalize to 0–360 so we get the next occurrence
-    delta_longitude %= 360
+    # Calculate Greenwich Mean Sidereal Time
+    T = (julian_date - 2451545.0) / 36525.0
 
+    gmst = (
+        280.46061837
+        + 360.98564736629 * (julian_date - 2451545.0)
+        + 0.000387933 * T**2
+        - T**3 / 38710000.0
+    )
+
+    # Normalize GMST to 0–360 degrees
+    gmst %= 360
+
+    # Calculate current inertial longitude of the launch site
+    current_inertial_longitude = (gmst + longitude) % 360
+
+    # Calculate the longitude difference
+    delta_longitude = (intersection - current_inertial_longitude) % 360
+
+    # Convert degrees to radians
     delta_longitude_rad = math.radians(delta_longitude)
 
+    # Calculate the time difference in seconds
     time_difference = delta_longitude_rad / EARTH_ROTATION_RATE
 
-    return current_time + timedelta(
+    # Calculate the intersection time
+    intersection_time = current_time + timedelta(
         seconds=time_difference
     )
+
+    return intersection_time
 
 """
 Creates a time window around the intersection time.
@@ -160,27 +188,57 @@ def create_window(intersection_time, window_minutes=10):
         "end": end_time
     }
 
-def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10):
-    intersections = get_plane_intersections(launchSite, inclination, raan)
+"""
+Calculates the launch windows based on the launch site, orbit type, right ascension of the
+ascending node, and the current time.
+
+Params:
+    launchSite [String]: The name of the launch site.
+    inclination [float]: The inclination of the orbit in degrees.
+    raan [float]: The right ascension of the ascending node in degrees.
+    current_time [float]: The current time in seconds since epoch.
+    window_minutes [int]: The width of the window in minutes.
+    numberOfWindows [int]: The number of windows to calculate.
+"""
+
+def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10, end_time=None):
+    intersections = get_plane_intersections(
+        launchSite,
+        inclination,
+        raan
+    )
 
     if intersections is None:
         return []
 
     windows = []
+    search_time = current_time
 
-    for intersection in intersections.values():
-        intersection_time = get_intersection_time(
-            launchSite,
-            intersection,
-            current_time
-        )
+    while end_time is None or search_time <= end_time:
+
+        next_times = []
+
+        for intersection in intersections.values():
+            intersection_time = get_intersection_time(
+                launchSite,
+                intersection,
+                search_time
+            )
+
+            next_times.append(intersection_time)
+
+        next_time = min(next_times)
+
+        if end_time is not None and next_time > end_time:
+            break
 
         window = create_window(
-            intersection_time,
+            next_time,
             window_minutes
         )
 
         windows.append(window)
 
-    windows.sort(key=lambda window: window["start"])
+        search_time = next_time + timedelta(seconds=1)
+
     return windows
