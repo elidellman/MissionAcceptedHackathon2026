@@ -69,7 +69,10 @@ Params:
     vehicleDuration [float]: The duration of the vehicle's flight in seconds.
 """
 
-def get_AdjustedAzimuth(azimuth, vehicleDuration):
+def get_AdjustedAzimuth(azimuth, vehicleDuration=None):
+    if vehicleDuration is None:
+        return azimuth
+
     adjusted_azimuth = azimuth - (EARTH_ROTATION_RATE * vehicleDuration)
     return adjusted_azimuth
 
@@ -198,7 +201,7 @@ Params:
     numberOfWindows [int]: The number of windows to calculate.
 """
 
-def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10, numberOfWindows=2):
+def get_window_times(launchSite, inclination, raan, current_time, window_minutes=10, end_time=None):
     intersections = get_plane_intersections(
         launchSite,
         inclination,
@@ -209,10 +212,9 @@ def get_window_times(launchSite, inclination, raan, current_time, window_minutes
         return []
 
     windows = []
-
     search_time = current_time
 
-    while len(windows) < numberOfWindows:
+    while end_time is None or search_time <= end_time:
 
         next_times = []
 
@@ -225,8 +227,10 @@ def get_window_times(launchSite, inclination, raan, current_time, window_minutes
 
             next_times.append(intersection_time)
 
-        # Find the next upcoming alignment
         next_time = min(next_times)
+
+        if end_time is not None and next_time > end_time:
+            break
 
         window = create_window(
             next_time,
@@ -235,7 +239,6 @@ def get_window_times(launchSite, inclination, raan, current_time, window_minutes
 
         windows.append(window)
 
-        # Move forward so we don't find the same alignment again
         search_time = next_time + timedelta(seconds=1)
 
     return windows

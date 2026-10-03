@@ -1,46 +1,69 @@
-import math
+from datetime import datetime, timedelta, timezone
 
-from lib_Calculations import OrbitTypes, get_Azimuth, get_AdjustedAzimuth, get_window_times
+from lib_Calculations import (
+    OrbitTypes,
+    get_Azimuth,
+    get_AdjustedAzimuth,
+    get_window_times
+)
 
 
 def calculate_launch_windows(
-    launchSite,
-    orbitType,
-    raan,
-    current_time,
-    window_minutes=10,
-    vehicle_duration=0,
-    numberOfWindows=2
+    orbit_type,
+    altitude,
+    launch_site,
+    raan=None,
+    vehicle_duration=None,
 ):
-    # Get orbital parameters
-    inclination = OrbitTypes[orbitType]["inclination"]
+    inclination = OrbitTypes[orbit_type]["inclination"]
 
-    # Calculate nominal launch azimuth
     azimuth = get_Azimuth(
-        launchSite,
-        orbitType
+        launch_site,
+        orbit_type
     )
 
-    # Calculate adjusted azimuth
     adjusted_azimuth = get_AdjustedAzimuth(
         azimuth,
         vehicle_duration
     )
 
-    # Calculate launch windows
-    windows = get_window_times(
-        launchSite,
-        inclination,
-        raan,
-        current_time,
-        window_minutes,
-        numberOfWindows
+    current_time = datetime.now(timezone.utc).replace(
+        minute=0,
+        second=0,
+        microsecond=0
     )
 
+    # Basic mode: every hour for 16 days
+    if raan is None:
+
+        windows = [
+            {
+                "start": current_time + timedelta(hours=i),
+                "end": current_time + timedelta(hours=i + 1),
+                "available": True
+            }
+            for i in range(384)
+        ]
+
+    # Advanced mode: actual RAAN alignment windows
+    else:
+
+        end_time = current_time + timedelta(days=16)
+
+        windows = get_window_times(
+            launch_site,
+            inclination,
+            raan,
+            current_time,
+            10,
+            end_time
+        )
+
     return {
-        "launch_site": launchSite,
-        "orbit_type": orbitType,
+        "launch_site": launch_site,
+        "orbit_type": orbit_type,
         "inclination": inclination,
+        "altitude": altitude,
         "azimuth": azimuth,
         "adjusted_azimuth": adjusted_azimuth,
         "windows": windows
