@@ -40,6 +40,7 @@ function simulatedDescent(altKm) {
 }
 
 const DEBRIS_RADIUS_KM = 10
+const ASCENT_SEC = 600
 
 /* ── ISS: live position + ground track from wheretheiss.at ── */
 const ISS_API = `https://api.wheretheiss.at/v1/satellites/${ISS.noradId}`
@@ -316,6 +317,7 @@ export default function SceneViewport({
   const [targetBase, setTargetBase] = useState(null)
   const [debris, setDebris] = useState(null) // result from /api/debris
   const [entry, setEntry] = useState(null) // point of entry into orbit, used for the debris check
+  const [collision, setCollision] = useState(null) // null | {status:'checking'} | {status:'error'} | result
 
   const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
   onLaunchSiteClickRef.current = onLaunchSiteClick
@@ -969,6 +971,43 @@ export default function SceneViewport({
     }
   }, [simulation])
 
+  // When Simulate is pressed, check the ascent path against the debris catalog
+  useEffect(() => {
+    if (!simulation) {
+      setCollision(null)
+      return
+    }
+    const ascent = flightRef.current.ascent
+    if (!ascent || ascent.length < 2) return
+
+    const win = windows?.find(w => w.id === selectedId) ?? windows?.[0]
+    const start = win ? new Date(win.opensAt) : new Date()
+
+    // ascent points store altitude as a fraction of Earth's radius, so convert back to km
+    const points = ascent.map((p, i) => ({
+      t_sec: (i / (ascent.length - 1)) * ASCENT_SEC,
+      lat: p.lat,
+      lon: p.lng,
+      alt_km: (p.alt / ALT_SCALE) * EARTH_R,
+    }))
+
+    const ctrl = new AbortController()
+    setCollision({ status: 'checking' })
+    fetch('/api/debris/path-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start: start.toISOString(), points, radius_km: DEBRIS_RADIUS_KM }),
+      signal: ctrl.signal,
+    })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`path check failed: ${r.status}`))))
+      .then(data => setCollision({ status: 'done', ...data }))
+      .catch(err => {
+        if (err.name !== 'AbortError') setCollision({ status: 'error' })
+      })
+
+    return () => ctrl.abort()
+  }, [simulation])
+
   // ISS: poll the live position, refresh the orbit track every few minutes
   useEffect(() => {
     let cancelled = false
@@ -1059,9 +1098,33 @@ export default function SceneViewport({
     }
   }, [debris, shellsVisible.debris])
 
+  const banner = (() => {
+    if (!collision) return null
+    if (collision.status === 'checking') return { color: '#90a4ae', text: 'Checking ascent path for debris…' }
+    if (collision.status === 'error') return { color: '#ffb74d', text: 'Debris check unavailable (is the backend running?)' }
+    const c = collision.closest
+    const detail = c ? `Closest: ${c.name} · ${c.distance_km} km at T+${Math.round(c.t_sec)} s` : ''
+    return collision.clear
+      ? { color: '#4caf50', text: `Clear: nothing within ${collision.radius_km} km of the ascent path`, detail }
+      : { color: '#ff1744', text: `Warning: ${collision.conflict_count} object(s) within ${collision.radius_km} km`, detail }
+  })()
+
   return (
     <div ref={containerRef} className={classes.viewport}>
       <div ref={globeRef} style={{ width: '100%', height: '100%' }} />
+      {banner && (
+        <div
+          style={{
+            position: 'fixed', top: 68, left: '50%', transform: 'translateX(-50%)', zIndex: 20,
+            padding: '8px 14px', borderRadius: 8, background: 'rgba(10,12,20,0.88)',
+            border: `1px solid ${banner.color}`, color: '#fff', fontSize: 13,
+            textAlign: 'center', pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontWeight: 600, color: banner.color }}>{banner.text}</div>
+          {banner.detail && <div style={{ opacity: 0.8, fontSize: 12 }}>{banner.detail}</div>}
+        </div>
+      )}
     </div>
   )
 }
