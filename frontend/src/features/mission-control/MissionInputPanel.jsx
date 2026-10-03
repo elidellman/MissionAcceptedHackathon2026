@@ -22,30 +22,49 @@ import classes from './MissionControl.module.css'
  * The user picks a launch site + orbit preset (+ days to search) and hits "Calculate windows".
  * Orbit values are editable in-place using the preset midpoints as default values.
  */
-export default function MissionInputPanel({ params, onSubmit, loading }) {
+export default function MissionInputPanel({ params, onPreviewChange, onSubmit, loading }) {
   const [open, setOpen] = useState(() => window.innerWidth >= 700)
-  const [draft, setDraft] = useState(params)
 
-  useEffect(() => {
-    setDraft(params)
-  }, [params])
+  const updateValue = (key, value) => {
+    const next = { ...params, [key]: value }
+    if (onPreviewChange) onPreviewChange(next)
+  }
 
-  const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }))
+  const updateNumericValue = (key, value) => {
+    const next = { ...params, [key]: Number(value) || 0 }
+    if (onPreviewChange) onPreviewChange(next)
+  }
+
+  const commitDraft = (nextDraft) => {
+    const normalized = {
+      ...nextDraft,
+      inclinationDeg: Number(nextDraft.inclinationDeg),
+      altitudeKm: Number(nextDraft.altitudeKm),
+      days: Number(nextDraft.days),
+    }
+
+    delete normalized.launchSite
+
+    if (JSON.stringify(normalized) === JSON.stringify(params)) return
+    if (onPreviewChange) onPreviewChange(normalized)
+    if (onSubmit) onSubmit(normalized)
+  }
 
   const pickOrbit = (orbit) => {
     const p = ORBIT_PRESETS[orbit]
-    setDraft((d) => ({
-      ...d,
+    const next = {
+      ...params,
       orbit,
       inclinationDeg: p.inclinationDeg,
       altitudeKm: p.altitudeKm,
-    }))
+    }
+    if (onPreviewChange) onPreviewChange(next)
   }
 
-  const site = getSite(draft.siteId)
-  const incl = Number(draft.inclinationDeg)
+  const site = getSite(params.siteId)
+  const incl = Number(params.inclinationDeg)
   const reachable = Number.isFinite(incl) && isDirectlyReachable(incl, site.lat)
-  const valid = Number(draft.days) >= 1
+  const valid = Number(params.days) >= 1
 
   if (!open) {
     return (
@@ -78,15 +97,18 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            if (valid) onSubmit({ ...draft, inclinationDeg: incl, altitudeKm: Number(draft.altitudeKm) })
+            if (valid) commitDraft({ ...params, inclinationDeg: incl, altitudeKm: Number(params.altitudeKm) })
           }}
         >
           <Stack gap="sm">
             <Select
               label="Launch site"
               data={LAUNCH_SITES.map((s) => ({ value: s.id, label: s.name }))}
-              value={draft.siteId}
-              onChange={(v) => v && set('siteId')(v)}
+              value={params.siteId}
+              onChange={(value) => {
+                if (!value || value === params.siteId) return
+                updateValue('siteId', value)
+              }}
               allowDeselect={false}
               description={`${site.region} · ${site.lat.toFixed(2)}°, ${site.lon.toFixed(2)}°`}
               comboboxProps={{ withinPortal: true }}
@@ -99,23 +121,23 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
               <SegmentedControl
                 fullWidth
                 data={['LEO', 'Polar', 'SSO']}
-                value={draft.orbit}
+                value={params.orbit}
                 onChange={pickOrbit}
               />
 
               <Stack gap="xs" mt="sm">
                 <NumberInput
                   label="Inclination (°)"
-                  value={draft.inclinationDeg}
-                  onChange={(value) => set('inclinationDeg')(Number(value) || 0)}
+                  value={params.inclinationDeg}
+                  onChange={(value) => updateNumericValue('inclinationDeg', value)}
                   min={0}
                   max={180}
                   step={0.1}
                 />
                 <NumberInput
                   label="Altitude (km)"
-                  value={draft.altitudeKm}
-                  onChange={(value) => set('altitudeKm')(Number(value) || 0)}
+                  value={params.altitudeKm}
+                  onChange={(value) => updateNumericValue('altitudeKm', value)}
                   min={0}
                   step={1}
                 />
@@ -123,14 +145,14 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
             </div>
 
             <Group gap="xs">
-              <Badge variant="outline" color="gray">Inclination {draft.inclinationDeg}°</Badge>
-              <Badge variant="outline" color="gray">Altitude {draft.altitudeKm} km</Badge>
+              <Badge variant="outline" color="gray">Inclination {params.inclinationDeg}°</Badge>
+              <Badge variant="outline" color="gray">Altitude {params.altitudeKm} km</Badge>
             </Group>
 
             <NumberInput
               label="Search ahead (days)"
-              value={draft.days}
-              onChange={set('days')}
+              value={params.days}
+              onChange={(value) => updateNumericValue('days', value)}
               min={1}
               max={30}
             />
