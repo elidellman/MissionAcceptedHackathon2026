@@ -81,50 +81,114 @@ def generate_launch_windows_with_weather(
 # =========================================================
 # TEST
 # =========================================================
+from datetime import datetime
+
 
 if __name__ == "__main__":
 
-    result = generate_launch_windows_with_weather(
-        launch_site="CapeCanaveral",
-        orbit_type="LEO",
-        altitude=500_000,
-        raan=30,
-        vehicle_duration=480
-    )
+    test_missions = [
+        {
+            "launch_site": "CapeCanaveral",
+            "orbit_type": "LEO",
+            "altitude": 500_000,
+            "raan": 30,
+            "vehicle_duration": 480
+        },
+        {
+            "launch_site": "NovaScotia",
+            "orbit_type": "POLAR",
+            "altitude": 500_000,
+            "raan": 30,
+            "vehicle_duration": 480
+        }
+    ]
 
-    print()
-    print("==============================")
-    print("LAUNCH WINDOWS + WEATHER")
-    print("==============================")
+    for mission in test_missions:
 
-    print()
-    print("Launch Site:", result["launch_site"])
-    print("Orbit Type:", result["orbit_type"])
-    print("Inclination:", result["inclination"])
-    print("Altitude:", result["altitude"])
-    print("Azimuth:", result["azimuth"])
-    print("Adjusted Azimuth:", result["adjusted_azimuth"])
+        result = generate_launch_windows_with_weather(
+            launch_site=mission["launch_site"],
+            orbit_type=mission["orbit_type"],
+            altitude=mission["altitude"],
+            raan=mission["raan"],
+            vehicle_duration=mission["vehicle_duration"]
+        )
 
-    print()
-    print(
-        "Number of windows:",
-        len(result["windows"])
-    )
+        windows = result["windows"]
 
-    for window in result["windows"]:
+        total = len(windows)
+
+        approved = [
+            w for w in windows
+            if w["weather"] == "green"
+        ]
+
+        rejected = [
+            w for w in windows
+            if w["weather"] == "red"
+        ]
+
+        unavailable = [
+            w for w in windows
+            if w["weather"] == "unknown"
+        ]
 
         print()
-        print("Window:", window["id"])
-        print("Start:", window["start"])
-        print("Peak:", window["peak"])
-        print("End:", window["end"])
-        print("Weather:", window["weather"])
-        print("Forecast hour:", window["weather_time"])
+        print("========================================")
+        print("        LAUNCH WINDOW SUMMARY")
+        print("========================================")
 
-        print("Weather checks:")
+        print()
+        print(f"LAUNCH SITE: {result['launch_site']}")
+        print(f"ORBIT: {result['orbit_type']}")
+        print(f"ALTITUDE: {result['altitude'] / 1000:.0f} km")
+        print(f"INCLINATION: {result['inclination']}°")
 
-        for name, check in window["checks"].items():
+        print()
+        print(f"Total orbital windows: {total}")
+        print(f"Weather-approved: {len(approved)}")
+        print(f"Weather-rejected: {len(rejected)}")
+        print(f"Weather-unavailable: {len(unavailable)}")
 
-            print(
-                f"  {name}: {check['status']}"
+        # Find next weather-approved window
+        if approved:
+
+            next_window = approved[0]
+
+            peak_time = datetime.fromisoformat(
+                next_window["peak"]
             )
+
+            formatted_time = peak_time.strftime(
+                "%B %-d, %Y at %H:%M UTC"
+            )
+
+            print()
+            print("NEXT AVAILABLE WINDOW:")
+            print(formatted_time)
+            print("Weather: GREEN")
+
+        else:
+
+            print()
+            print("NEXT AVAILABLE WINDOW:")
+            print("No weather-approved launch window available")
+
+        # Show rejected windows
+        if rejected:
+
+            print()
+            print("REJECTED WINDOWS:")
+
+            for window in rejected:
+
+                print(
+                    f"  {window['id']} - "
+                    f"{window['peak']}"
+                )
+
+                for name, check in window["checks"].items():
+
+                    if check["status"] == "FAIL":
+                        print(
+                            f"      {name}: FAIL"
+                        )

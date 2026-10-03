@@ -2,6 +2,7 @@ import os
 
 from flask import Flask, jsonify, request
 from backend.Calculations import calculate_launch_windows
+from backend.integration import generate_launch_windows_with_weather 
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -24,6 +25,21 @@ def create_app(test_config=None):
             'message': 'This backend was created using Flask, Created by Eli, Ely, Oliver, Hazem, Jeremy, Jeremiah',
             'status': 'ok'
         })
+
+
+    @app.route("/api/launch-windows/weather", methods=["POST"])
+    def launch_windows_with_weather():
+        data = request.get_json()
+
+        result = generate_launch_windows_with_weather(
+            launch_site=data["launch_site"],
+            orbit_type=data["orbit_type"],
+            altitude=data.get("altitude", 500000),
+            raan=data.get("raan", 30),
+            vehicle_duration=data.get("vehicle_duration", 480)
+        )
+
+        return jsonify(result)
 
     # -------------------------
     # LAUNCH WINDOWS

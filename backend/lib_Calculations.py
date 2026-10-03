@@ -35,9 +35,13 @@ LaunchSites = {
     "CapeCanaveral": {
         "latitude": 28.5620,
         "longitude": -80.5772
+    },
+
+    "NovaScotia": {
+        "latitude": 45.303559,
+        "longitude": -60.982891
     }
 }
-
 
 
 """
