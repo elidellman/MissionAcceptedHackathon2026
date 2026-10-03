@@ -109,7 +109,7 @@ function useSimulationClock(launchIso, simStartedAtMs, timeScale) {
   return { label: 'Simulation time', text: formatTime(launchMs + simElapsedMs) }
 }
 
-// useWidth: tracks an element's width, so the live-feed panel can sit to the left of the top-right panel
+/** Width of an element, kept up to date as it resizes (used to place the live-feed panel). */
 function useWidth(ref) {
   const [width, setWidth] = useState(0)
 
@@ -132,6 +132,8 @@ function useWidth(ref) {
 // The left side is the MissionInputPanel (rendered by pages/MissionControl.jsx), not part of this file.
 export default function HudOverlay({
   mission,
+  siteId,
+  loading,
   windows,
   selectedId,
   onSelect, // page handler: also resets the animation and the time scale
@@ -179,17 +181,14 @@ export default function HudOverlay({
   // Simulate starts the animation and the clock from this window's opening time.
   // Only selects when it's a different window, because selecting resets the time scale.
   const handleSimulate = (windowId) => {
-  console.log('HUD: simulate clicked', {
-    windowId,
-    selectedId,
-    hasOnSimulate: typeof onSimulate === 'function',
-  })
-
-  if (windowId !== selectedId) {
-    onSelect(windowId)
+    if (windowId !== selectedId) {
+      onSelect(windowId)
+    }
+    onSimulate?.(windowId)
   }
-  onSimulate?.(windowId)
-}
+
+  // Debris is on unless the state says otherwise
+  const debrisOn = shellsVisible.debris ?? true
 
   return (
     <div className={classes.hud}>
@@ -238,21 +237,29 @@ export default function HudOverlay({
           </Menu>
         </Group>
 
-        <Text size="xs" c="dimmed" ta="center" mt={6}>
-          {mission.launchSite.name}
-        </Text>
-
-        <Group gap={6} mt={4} justify="center">
-          <Badge size="sm" variant="light">
-            {mission.targetOrbit}
-          </Badge>
-          <Badge size="sm" variant="outline" color="gray">
-            {mission.inclinationDeg}°
-          </Badge>
-          <Badge size="sm" variant="outline" color="gray">
-            {mission.altitudeKm} km
-          </Badge>
-        </Group>
+        {mission ? (
+          <>
+            {/* The site the windows were calculated for (not the dropdown preview) */}
+            <Text size="xs" c="dimmed" ta="center" mt={6}>
+              {mission.launchSite.name}
+            </Text>
+            <Group gap={6} mt={4} justify="center">
+              <Badge size="sm" variant="light">
+                {mission.targetOrbit}
+              </Badge>
+              <Badge size="sm" variant="outline" color="gray">
+                {mission.inclinationDeg}°
+              </Badge>
+              <Badge size="sm" variant="outline" color="gray">
+                {mission.altitudeKm} km
+              </Badge>
+            </Group>
+          </>
+        ) : (
+          <Text size="xs" c="dimmed" ta="center" mt={6}>
+            {loading ? 'Calculating…' : 'Click “Calculate windows” to start'}
+          </Text>
+        )}
 
         {/* Shell toggle buttons */}
         <Stack
@@ -293,15 +300,28 @@ export default function HudOverlay({
               SSO
             </Button>
           </Group>
+
+          {/* Debris toggle */}
+          <Text size="xs" c="dimmed" tt="uppercase" fw={700} ta="center" mt={4}>
+            Space debris
+          </Text>
+          <Group gap={6} justify="center">
+            <Button
+              size="xs"
+              variant={debrisOn ? 'filled' : 'light'}
+              color="red"
+              onClick={() => onShellsChange({ ...shellsVisible, debris: !debrisOn })}
+            >
+              {debrisOn ? 'Hide debris' : 'Show debris'}
+            </Button>
+          </Group>
         </Stack>
 
-        <ViewingSpots spots={VIEWING_SPOTS[mission.launchSite.id] ?? []} />
-
-        <PageCredits
-          ids={PAGE_CREDITS.missionControl}
-          collapsible
-          mt={12}
+        <ViewingSpots
+          spots={VIEWING_SPOTS[mission?.launchSite?.id ?? siteId] ?? []}
         />
+
+        <PageCredits ids={PAGE_CREDITS.missionControl} collapsible mt={12} />
       </Paper>
 
       {/* Top-right, left of the countdown panel: live feed of the clicked site or ISS */}
@@ -357,7 +377,14 @@ export default function HudOverlay({
           </Group>
         </UnstyledButton>
 
-        {windowsOpen && (
+        {/* Calculated, but nothing came back (e.g. orbit not reachable from this site) */}
+        {windowsOpen && mission && !windows.length && (
+          <Text size="xs" c="dimmed" ta="center" mt={6}>
+            No launch windows for {mission.targetOrbit} from {mission.launchSite.name}.
+          </Text>
+        )}
+
+        {windowsOpen && windows.length > 0 && (
           <Group gap="xs" wrap="nowrap" mt={6} className={classes.windowRow}>
             {windows.map((w) => {
               const wx = WEATHER[w.weather]

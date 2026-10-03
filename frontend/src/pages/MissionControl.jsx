@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Center, Loader, Text } from '@mantine/core'
+import { Text } from '@mantine/core'
 import SceneViewport from '../features/mission-control/SceneViewport.jsx'
 import HudOverlay from '../features/mission-control/HudOverlay.jsx'
 import MissionInputPanel from '../features/mission-control/MissionInputPanel.jsx'
 import { DEFAULT_PARAMS, ISS, getSite } from '../features/mission-control/launchConfig.js'
 import { fetchLaunchWindows, fetchTrajectory } from '../api/missionApi.js'
- import { DEFAULT_TIME_SCALE } from '../features/mission-control/simConfig.js'
+import { DEFAULT_TIME_SCALE } from '../features/mission-control/simConfig.js'
 import classes from '../features/mission-control/MissionControl.module.css'
 
 /**
@@ -21,10 +21,11 @@ import classes from '../features/mission-control/MissionControl.module.css'
  */
 export default function MissionControl() {
   const [previewParams, setPreviewParams] = useState(DEFAULT_PARAMS)
-  const [submittedParams, setSubmittedParams] = useState(DEFAULT_PARAMS)
+  // null until the user clicks "Calculate windows": the countdown and windows bar start empty
+  const [submittedParams, setSubmittedParams] = useState(null)
   const [mission, setMission] = useState(null)
   const [windows, setWindows] = useState([])
-  const [loadingWindows, setLoadingWindows] = useState(true)
+  const [loadingWindows, setLoadingWindows] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [trajectory, setTrajectory] = useState([])
   const [error, setError] = useState(null)
@@ -32,11 +33,12 @@ export default function MissionControl() {
     leo: false,
     polar: false,
     sso: false,
+    debris: true,
   })
   const [simulation, setSimulation] = useState(null)
   const [timeScale, setTimeScale] = useState(DEFAULT_TIME_SCALE)
 
-  // Launch site whose live feed is open.
+  // Launch site whose live feed is open (set by clicking a site that has `liveFeed` on the globe)
   const [liveFeedSite, setLiveFeedSite] = useState(null)
 
   // Keep a launch-site live feed tied to the currently selected site.
@@ -51,6 +53,7 @@ export default function MissionControl() {
 
   // Load mission + windows whenever the user submits a real mission change.
   useEffect(() => {
+    if (!submittedParams) return
     let cancelled = false
 
     setLoadingWindows(true)
@@ -59,6 +62,9 @@ export default function MissionControl() {
     setSelectedId(null)
     setSimulation(null)
     setTimeScale(DEFAULT_TIME_SCALE)
+    // Clear the previous site's results so they never show under the new site
+    setMission(null)
+    setWindows([])
 
     fetchLaunchWindows(submittedParams)
       .then(({ mission, windows }) => {
@@ -125,6 +131,7 @@ export default function MissionControl() {
     [windows, mission]
   )
 
+  // Picking (or clearing) a time frame resets the animation and the time scale
   const handleSelectWindow = useCallback((windowId) => {
     setSelectedId(windowId)
     setSimulation(null)
@@ -135,18 +142,6 @@ export default function MissionControl() {
     setSubmittedParams(next)
     setPreviewParams(next)
   }, [])
-
-  if (!mission) {
-    return (
-      <Center className={classes.root}>
-        {error ? (
-          <Text c="red">Couldn't load mission data: {error}</Text>
-        ) : (
-          <Loader />
-        )}
-      </Center>
-    )
-  }
 
   return (
     <div className={classes.root}>
@@ -166,12 +161,14 @@ export default function MissionControl() {
         onIssClick={() => setLiveFeedSite(ISS)}
       />
 
-     <HudOverlay
+      <HudOverlay
         mission={mission}
+        siteId={previewParams.siteId}
+        loading={loadingWindows}
         windows={windows}
         selectedId={selectedId}
         onSelect={handleSelectWindow}
-        onSimulate={handleSimulateLaunch}  
+        onSimulate={handleSimulateLaunch}
         simulation={simulation}
         timeScale={timeScale}
         onTimeScaleChange={setTimeScale}
