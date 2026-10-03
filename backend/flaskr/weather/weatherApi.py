@@ -4,9 +4,9 @@ import requests_cache
 from retry_requests import retry
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Open-Meteo setup
-# ---------------------------------------------------------
+# =========================================================
 
 cache_session = requests_cache.CachedSession(
     ".cache",
@@ -24,37 +24,40 @@ openmeteo = openmeteo_requests.Client(
 )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Launch sites
-# ---------------------------------------------------------
+# =========================================================
 
 LAUNCH_SITES = {
-    "CapeCanaveral": {
-        "latitude": 28.5620,
-        "longitude": -80.5772
-    },
-
-    "spaceport-nova-scotia": {
+    "nova-scotia": {
+        "name": "Spaceport Nova Scotia",
         "latitude": 45.303559,
         "longitude": -60.982891
+    },
+
+    "cape-canaveral": {
+        "name": "Cape Canaveral SLC-40",
+        "latitude": 28.5618,
+        "longitude": -80.5770
     }
 }
 
 
-# ---------------------------------------------------------
-# Launch weather criteria
-# ---------------------------------------------------------
+# =========================================================
+# Weather criteria
+# =========================================================
 
 MAX_WIND_MPH = 30
 MAX_RAIN_IN_HOUR = 1
 MIN_VISIBILITY_MILES = 2
+MAX_WINDS_ALOFT_MPH = 50
 
 
-# ---------------------------------------------------------
-# Get weather forecast
-# ---------------------------------------------------------
+# =========================================================
+# Get hourly weather forecast
+# =========================================================
 
-def get_weather(latitude, longitude, launch_time):
+def get_weather_forecast(latitude, longitude, days=16):
 
     url = "https://api.open-meteo.com/v1/forecast"
 
@@ -74,11 +77,9 @@ def get_weather(latitude, longitude, launch_time):
             "wind_speed_180m"
         ],
 
-        "forecast_days": 3,
+        "forecast_days": days,
         "timezone": "UTC",
 
-        # Makes the API return values in units
-        # that are easier for our launch criteria.
         "wind_speed_unit": "mph",
         "precipitation_unit": "inch"
     }
@@ -91,125 +92,74 @@ def get_weather(latitude, longitude, launch_time):
     )
 
     response = responses[0]
-
     hourly = response.Hourly()
 
-    # -----------------------------------------------------
-    # Convert Open-Meteo timestamps to pandas timestamps
-    # -----------------------------------------------------
-
+    # Create timestamps for each hourly forecast
     times = pd.date_range(
         start=pd.to_datetime(
             hourly.Time(),
             unit="s",
             utc=True
         ),
-
         end=pd.to_datetime(
             hourly.TimeEnd(),
             unit="s",
             utc=True
         ),
-
         freq=pd.Timedelta(
             seconds=hourly.Interval()
         ),
-
         inclusive="left"
     )
-
-    # -----------------------------------------------------
-    # Put the forecast into a DataFrame
-    # -----------------------------------------------------
 
     weather = pd.DataFrame({
         "time": times,
 
         "temperature": (
-            hourly.Variables(0)
-            .ValuesAsNumpy()
+            hourly.Variables(0).ValuesAsNumpy()
         ),
 
         "cloud_cover": (
-            hourly.Variables(1)
-            .ValuesAsNumpy()
+            hourly.Variables(1).ValuesAsNumpy()
         ),
 
         "visibility": (
-            hourly.Variables(2)
-            .ValuesAsNumpy()
+            hourly.Variables(2).ValuesAsNumpy()
         ),
 
         "rain": (
-            hourly.Variables(3)
-            .ValuesAsNumpy()
+            hourly.Variables(3).ValuesAsNumpy()
         ),
 
         "wind_speed": (
-            hourly.Variables(4)
-            .ValuesAsNumpy()
+            hourly.Variables(4).ValuesAsNumpy()
         ),
 
         "wind_gusts": (
-            hourly.Variables(5)
-            .ValuesAsNumpy()
+            hourly.Variables(5).ValuesAsNumpy()
         ),
 
         "wind_80m": (
-            hourly.Variables(6)
-            .ValuesAsNumpy()
+            hourly.Variables(6).ValuesAsNumpy()
         ),
 
         "wind_120m": (
-            hourly.Variables(7)
-            .ValuesAsNumpy()
+            hourly.Variables(7).ValuesAsNumpy()
         ),
 
         "wind_180m": (
-            hourly.Variables(8)
-            .ValuesAsNumpy()
+            hourly.Variables(8).ValuesAsNumpy()
         )
     })
 
-    # -----------------------------------------------------
-    # Convert requested launch time to UTC
-    # -----------------------------------------------------
-
-    launch_time = pd.to_datetime(
-        launch_time,
-        utc=True
-    )
-
-    # -----------------------------------------------------
-    # Find forecast hour closest to launch time
-    # -----------------------------------------------------
-
-    weather["time_difference"] = abs(
-        weather["time"] - launch_time
-    )
-
-    closest = weather.loc[
-        weather["time_difference"].idxmin()
-    ]
-
-    return closest
+    return weather
 
 
-# ---------------------------------------------------------
-# Check weather against launch criteria
-# ---------------------------------------------------------
+# =========================================================
+# Evaluate weather for ONE hour
+# =========================================================
 
-def check_launch_weather(
-    latitude,
-    longitude,
-    launch_time
-):
-
-    weather = get_weather(
-        latitude,
-        longitude,
-        launch_time
-    )
+def evaluate_weather(hour):
 
     checks = {}
 
@@ -217,9 +167,7 @@ def check_launch_weather(
     # Surface wind
     # -----------------------------------------------------
 
-    wind = float(
-        weather["wind_speed"]
-    )
+    wind = float(hour["wind_speed"])
 
     checks["surface_wind"] = {
         "value": round(wind, 1),
@@ -236,9 +184,7 @@ def check_launch_weather(
     # Rain
     # -----------------------------------------------------
 
-    rain = float(
-        weather["rain"]
-    )
+    rain = float(hour["rain"])
 
     checks["rain"] = {
         "value": round(rain, 2),
@@ -253,13 +199,10 @@ def check_launch_weather(
 
     # -----------------------------------------------------
     # Visibility
-    #
-    # Open-Meteo returns visibility in metres.
-    # Convert metres -> miles.
     # -----------------------------------------------------
 
     visibility_meters = float(
-        weather["visibility"]
+        hour["visibility"]
     )
 
     visibility_miles = (
@@ -283,32 +226,34 @@ def check_launch_weather(
     # -----------------------------------------------------
     # Winds aloft
     #
-    # These are informational for now.
-    # They are NOT being treated as a real vehicle-specific
-    # upper-air structural limit.
     # -----------------------------------------------------
 
+    wind_80m = float(hour["wind_80m"])
+    wind_120m = float(hour["wind_120m"])
+    wind_180m = float(hour["wind_180m"])
+
+    max_wind_aloft = max(
+        wind_80m,
+        wind_120m,
+        wind_180m
+    )
+
     checks["winds_aloft"] = {
-        "wind_80m_mph": round(
-            float(weather["wind_80m"]),
-            1
-        ),
-
-        "wind_120m_mph": round(
-            float(weather["wind_120m"]),
-            1
-        ),
-
-        "wind_180m_mph": round(
-            float(weather["wind_180m"]),
-            1
-        ),
-
-        "status": "INFO"
+        "wind_80m_mph": round(wind_80m, 1),
+        "wind_120m_mph": round(wind_120m, 1),
+        "wind_180m_mph": round(wind_180m, 1),
+        "maximum_mph": round(max_wind_aloft, 1),
+        "limit": MAX_WINDS_ALOFT_MPH,
+        "unit": "mph",
+        "status": (
+           "PASS"
+            if max_wind_aloft <= MAX_WINDS_ALOFT_MPH
+            else "FAIL"
+        )
     }
 
     # -----------------------------------------------------
-    # Overall launch decision
+    # Overall status
     # -----------------------------------------------------
 
     failed_checks = [
@@ -318,94 +263,177 @@ def check_launch_weather(
     ]
 
     if failed_checks:
-        status = "NO-GO"
+        status = "red"
     else:
-        status = "GO"
-
-    # -----------------------------------------------------
-    # Return structured result
-    # -----------------------------------------------------
+        status = "green"
 
     return {
         "status": status,
-
-        "launch_time": str(
-            launch_time
-        ),
-
-        "weather_time": str(
-            weather["time"]
-        ),
-
         "checks": checks
     }
 
 
-# ---------------------------------------------------------
-# TEST
-# ---------------------------------------------------------
+# =========================================================
+# Check weather for ONE specific launch time
+# =========================================================
 
-if __name__ == "__main__":
+def get_weather_status(site_id, launch_time):
 
-    site = LAUNCH_SITES[
-        "spaceport-nova-scotia"
-    ]
+    if site_id not in LAUNCH_SITES:
+        raise ValueError(
+            f"Unknown launch site: {site_id}"
+        )
 
-    launch_time = (
-        "2026-10-03T14:00:00Z"
-    )
+    site = LAUNCH_SITES[site_id]
 
-    print()
-    print("==============================")
-    print("   LAUNCH WEATHER CHECK")
-    print("==============================")
-    print()
-
-    print(
-        "Launch site:",
-        "Spaceport Nova Scotia"
-    )
-
-    print(
-        "Latitude:",
-        site["latitude"]
-    )
-
-    print(
-        "Longitude:",
+    weather = get_weather_forecast(
+        site["latitude"],
         site["longitude"]
     )
 
-    print(
-        "Launch time:",
-        launch_time
+    launch_time = pd.to_datetime(
+        launch_time,
+        utc=True
     )
 
-    print()
+    # Find the forecast hour closest to launch time
+    weather["time_difference"] = abs(
+        weather["time"] - launch_time
+    )
 
-    result = check_launch_weather(
+    closest = weather.loc[
+        weather["time_difference"].idxmin()
+    ]
+
+    result = evaluate_weather(closest)
+
+    return {
+        "site_id": site_id,
+        "launch_time": launch_time.isoformat(),
+        "weather_time": closest["time"].isoformat(),
+        "weather": result["status"],
+        "checks": result["checks"]
+    }
+
+
+# =========================================================
+# Find weather conditions for EVERY hour in a window
+# =========================================================
+
+def get_weather_windows(
+    site_id,
+    start_time,
+    end_time
+):
+
+    if site_id not in LAUNCH_SITES:
+        raise ValueError(
+            f"Unknown launch site: {site_id}"
+        )
+
+    site = LAUNCH_SITES[site_id]
+
+    start_time = pd.to_datetime(
+        start_time,
+        utc=True
+    )
+
+    end_time = pd.to_datetime(
+        end_time,
+        utc=True
+    )
+
+    if end_time < start_time:
+        raise ValueError(
+            "end_time must be after start_time"
+        )
+
+    # Calculate how many days of forecast we need
+    days = max(
+        1,
+        (end_time - start_time).days + 1
+    )
+
+    # Open-Meteo forecast limit is handled by requesting
+    # up to 16 days here.
+    days = min(days, 16)
+
+    weather = get_weather_forecast(
         site["latitude"],
         site["longitude"],
+        days=days
+    )
+
+    # Only keep the requested time window
+    weather = weather[
+        (weather["time"] >= start_time)
+        &
+        (weather["time"] <= end_time)
+    ]
+
+    results = []
+
+    for _, hour in weather.iterrows():
+
+        result = evaluate_weather(hour)
+
+        results.append({
+            "time": hour["time"].isoformat(),
+            "weather": result["status"],
+            "checks": result["checks"]
+        })
+
+    return {
+        "site_id": site_id,
+        "start_time": start_time.isoformat(),
+        "end_time": end_time.isoformat(),
+        "hours": results
+    }
+
+
+# =========================================================
+# TEST
+# =========================================================
+
+if __name__ == "__main__":
+
+    print()
+    print("==============================")
+    print("   LAUNCH WEATHER TEST")
+    print("==============================")
+    print()
+
+    # -----------------------------------------------------
+    # Test one specific launch time
+    # -----------------------------------------------------
+
+    site_id = "nova-scotia"
+
+    launch_time = "2026-10-03T14:00:00Z"
+
+    print("Site:", site_id)
+    print("Launch time:", launch_time)
+    print()
+
+    result = get_weather_status(
+        site_id,
         launch_time
     )
 
     print(
-        "OVERALL STATUS:",
-        result["status"]
+        "WEATHER:",
+        result["weather"]
     )
 
-    print()
-    print("Weather time:")
     print(
+        "Forecast hour:",
         result["weather_time"]
     )
 
     print()
-    print("Criteria:")
 
     for name, check in result["checks"].items():
 
-        print()
         print(name)
 
         for key, value in check.items():
@@ -413,3 +441,29 @@ if __name__ == "__main__":
             print(
                 f"  {key}: {value}"
             )
+
+        print()
+
+    # -----------------------------------------------------
+    # Test hourly weather window
+    # -----------------------------------------------------
+
+    print()
+    print("==============================")
+    print("   HOURLY WEATHER WINDOW")
+    print("==============================")
+    print()
+
+    hourly_result = get_weather_windows(
+        "nova-scotia",
+        "2026-10-03T00:00:00Z",
+        "2026-10-19T23:00:00Z"
+    )
+
+    for hour in hourly_result["hours"]:
+
+        print(
+            hour["time"],
+            "->",
+            hour["weather"]
+        )
