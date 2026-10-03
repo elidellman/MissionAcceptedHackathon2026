@@ -21,9 +21,9 @@ VIEWING_SPOTS = {
     ],
     "nova-scotia": [
         {
-            "name": "Canso Waterfront",
-            "address": "Union St, Canso, NS B0H 1H0",
-            "image": "/spots/canso-waterfront.jpg",
+            "name": "Betsy's Beach",
+            "address": "Betsys Beach, Canso, NS B0H 1H0",
+            "image": "/spots/betsys-beach.jpg",
             "distanceKm": 5,
         },
         {
