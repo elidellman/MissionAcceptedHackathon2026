@@ -82,6 +82,193 @@ function makeIssObject() {
   return group
 }
 
+/* ── Miniature 3D models ──────────────────────────────────────────────────────
+ * Sizes are in globe units (the Earth's radius is 100), so 1 unit ≈ 64 km:
+ * the models are wildly oversized on purpose so they're visible from orbit.
+ * Every model is built with +Y pointing "up".
+ */
+const SITE_MODEL_SCALE = 1.3 // make launch sites bigger/smaller here
+const SITES_WITH_ASSEMBLY_BUILDING = new Set(['cape-canaveral'])
+
+const mat = (color, extra = {}) => new THREE.MeshLambertMaterial({ color, ...extra })
+
+/** Rocket: white body, black interstage, nose cone, four fins, engine bell, optional flame. */
+function makeRocketModel({ withFlame = false } = {}) {
+  const rocket = new THREE.Group()
+  const white = mat('#f4f4f4')
+  const dark = mat('#222831')
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.9, 20), white)
+  body.position.y = 0.95 + 0.2
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.225, 0.18, 20), dark) // interstage
+  band.position.y = 1.45
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 20), white)
+  nose.position.y = 1.9 + 0.2 + 0.275
+  const engine = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.2, 16), dark)
+  engine.position.y = 0.1
+  rocket.add(body, band, nose, engine)
+
+  for (let k = 0; k < 4; k++) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 0.28), dark)
+    const a = (k * Math.PI) / 2
+    fin.position.set(Math.cos(a) * 0.3, 0.38, Math.sin(a) * 0.3)
+    fin.rotation.y = -a
+    rocket.add(fin)
+  }
+
+  if (withFlame) {
+    const flame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.2, 0.9, 16),
+      new THREE.MeshBasicMaterial({ color: '#ffb300', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+    )
+    flame.rotation.x = Math.PI // point down
+    flame.position.y = -0.45
+    flame.name = 'flame'
+    const core = new THREE.Mesh(
+      new THREE.ConeGeometry(0.1, 0.5, 12),
+      new THREE.MeshBasicMaterial({ color: '#fff3c4', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+    )
+    core.rotation.x = Math.PI
+    core.position.y = -0.25
+    rocket.add(flame, core)
+  }
+  return rocket
+}
+
+/** Launch tower: red lattice column with cross-bracing and a crane arm swung over the rocket. */
+function makeLaunchTower() {
+  const tower = new THREE.Group()
+  const red = mat('#c62828')
+  const steel = mat('#9e9e9e')
+  const h = 2.9
+  // four corner legs
+  ;[[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.06), red)
+    leg.position.set(x * 0.17, h / 2, z * 0.17)
+    tower.add(leg)
+  })
+  // horizontal rings every few levels
+  for (let y = 0.3; y < h; y += 0.45) {
+    const ring = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.4), red)
+    ring.position.y = y
+    tower.add(ring)
+  }
+  // crane arm + hook line at the top
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.1), steel)
+  arm.position.set(0.45, h - 0.15, 0)
+  const counterweight = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.18), steel)
+  counterweight.position.set(-0.2, h - 0.15, 0)
+  const cable = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.5, 0.015), steel)
+  cable.position.set(0.85, h - 0.45, 0)
+  // access arm reaching to the rocket
+  const access = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 0.08), steel)
+  access.position.set(0.32, 2.0, 0)
+  tower.add(arm, counterweight, cable, access)
+  return tower
+}
+
+/** Vehicle Assembly Building: big white block, blue door stripes, flag band. */
+function makeAssemblyBuilding() {
+  const vab = new THREE.Group()
+  const main = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.7, 1.1), mat('#eceff1'))
+  main.position.y = 0.85
+  const low = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 1.1), mat('#cfd8dc')) // low bay
+  low.position.set(0.95, 0.35, 0)
+  vab.add(main, low)
+  // tall doors on the front face
+  ;[-0.3, 0.3].forEach((x) => {
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.45, 0.02), mat('#37474f'))
+    door.position.set(x, 0.76, 0.56)
+    vab.add(door)
+  })
+  // flag band (red/white/blue) near the top corner
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.22, 0.02), mat('#1565c0'))
+  flag.position.set(-0.42, 1.4, 0.56)
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.06, 0.025), mat('#c62828'))
+  stripe.position.set(-0.42, 1.36, 0.56)
+  vab.add(flag, stripe)
+  return vab
+}
+
+/**
+ * A whole launch site, built with +Y up and returned wrapped so it stands upright on the
+ * globe (the globe's object layer points +Z away from the surface).
+ */
+function makeLaunchSiteModel({ siteId, active }) {
+  const site = new THREE.Group()
+
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.1, 0.08, 32), mat('#90a4ae'))
+  pad.position.y = 0.04
+  site.add(pad)
+
+  // Selection ring (replaces the old yellow / white dot)
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(1.25, active ? 0.09 : 0.05, 8, 48),
+    new THREE.MeshBasicMaterial({ color: active ? '#ffeb3b' : '#ffffff' })
+  )
+  ring.rotation.x = Math.PI / 2
+  ring.position.y = 0.06
+  site.add(ring)
+
+  const tower = makeLaunchTower()
+  tower.position.set(0.15, 0.08, 0)
+  const rocket = makeRocketModel()
+  rocket.position.set(0.75, 0.08, 0)
+  rocket.scale.setScalar(0.9)
+  site.add(tower, rocket)
+
+  if (SITES_WITH_ASSEMBLY_BUILDING.has(siteId)) {
+    const vab = makeAssemblyBuilding()
+    vab.position.set(-1.9, 0, 0.3)
+    // concrete apron + crawlerway from the building to the pad
+    const road = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.03, 0.22), mat('#b0bec5'))
+    road.position.set(-1.0, 0.02, 0.1)
+    site.add(vab, road)
+  }
+
+  site.scale.setScalar(SITE_MODEL_SCALE)
+  site.rotation.x = Math.PI / 2 // +Y up → globe's +Z "away from the surface"
+
+  const wrapper = new THREE.Group()
+  wrapper.add(site)
+  return wrapper
+}
+
+/** Satellite: gold-foil body, two solar wings, antenna dish (dish faces −Y, i.e. towards Earth). */
+function makeSatelliteModel() {
+  const sat = new THREE.Group()
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.7), mat('#d4a017', { emissive: '#3a2a00' }))
+  sat.add(body)
+  const panelMat = mat('#1a3d8f', { emissive: '#0a1a40', side: THREE.DoubleSide })
+  const frameMat = mat('#b0bec5')
+  ;[-1, 1].forEach((side) => {
+    const boom = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.05, 0.05), frameMat)
+    boom.position.x = side * 0.55
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.75), panelMat)
+    panel.position.x = side * 1.55
+    sat.add(boom, panel)
+  })
+  const dish = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.6),
+    mat('#ffffff', { side: THREE.DoubleSide })
+  )
+  dish.rotation.x = Math.PI // bowl opens downward, towards Earth
+  dish.position.y = -0.55
+  const feed = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), frameMat)
+  feed.position.y = -0.55
+  sat.add(dish, feed)
+  return sat
+}
+
+/** Dispose every geometry/material in a model. */
+function disposeModel(obj) {
+  obj.traverse((o) => {
+    o.geometry?.dispose()
+    if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose())
+    else o.material?.dispose()
+  })
+}
+
 function makeStarField(radius, count = 4000) {
   const positions = new Float32Array(count * 3)
   const colors = new Float32Array(count * 3)
@@ -634,29 +821,27 @@ export default function SceneViewport({
       .pathResolution(1)
 
     const markers = []
-    LAUNCH_SITES.forEach((launchSite) => {
-      const isActive = launchSite.id === activeTargetBase.id
-      markers.push({
-        id: launchSite.id,
-        type: 'launchsite-interactive',
-        name: launchSite.name,
-        lat: launchSite.lat,
-        lng: launchSite.lon,
-        alt: 0,
-        color: isActive ? 'yellow' : 'white',
-      })
-      if (isActive) {
-        markers.push({
-          id: launchSite.id,
-          type: 'launchsite-selected',
-          name: launchSite.name,
-          lat: launchSite.lat,
-          lng: launchSite.lon,
-          alt: 0,
-          color: 'black',
-        })
-      }
-    })
+    // Launch sites are drawn as miniature 3D models (objects layer) instead of dots
+    const siteModels = LAUNCH_SITES.map((launchSite) => ({
+      id: launchSite.id,
+      type: 'site',
+      name: `${launchSite.name} (click to select)`,
+      lat: launchSite.lat,
+      lng: launchSite.lon,
+      alt: 0.001,
+      active: launchSite.id === activeTargetBase.id,
+    }))
+
+    const selectSite = (siteIdClicked) => {
+      const clickedSite = LAUNCH_SITES.find(site => site.id === siteIdClicked)
+      if (!clickedSite) return
+      setTargetBase(clickedSite)
+      onTargetBaseChangeRef.current?.(clickedSite)
+      onLaunchSiteClickRef.current?.(clickedSite)
+      // Fly there now, and remember it so the camera effect doesn't fly there again
+      lastViewedSiteRef.current = clickedSite.id
+      globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
+    }
 
     const last = ascent[ascent.length - 1]
     // Point of entry into orbit, used for the debris check
@@ -712,21 +897,24 @@ export default function SceneViewport({
         )
       )
 
-    missionLayers.current = { paths, objects: [intersectionPoint] }
+    missionLayers.current = { paths, objects: [intersectionPoint, ...siteModels] }
     globe
       .objectThreeObject(d =>
         d.type === 'iss'
           ? makeIssObject()
-          : new THREE.Mesh(
-              new THREE.SphereGeometry(1, 16, 16),
-              new THREE.MeshBasicMaterial({ color: d.color })
-            )
+          : d.type === 'site'
+            ? makeLaunchSiteModel({ siteId: d.id, active: d.active })
+            : new THREE.Mesh(
+                new THREE.SphereGeometry(1, 16, 16),
+                new THREE.MeshBasicMaterial({ color: d.color })
+              )
       )
       .onObjectClick((obj) => {
         if (obj?.type === 'iss') onIssClickRef.current?.()
+        if (obj?.type === 'site') selectSite(obj.id)
       })
       .onObjectHover((obj) => {
-        if (globeRef.current) globeRef.current.style.cursor = obj?.type === 'iss' ? 'pointer' : ''
+        if (globeRef.current) globeRef.current.style.cursor = obj?.type === 'iss' || obj?.type === 'site' ? 'pointer' : ''
       })
 
     applyLayers()
@@ -759,12 +947,12 @@ export default function SceneViewport({
 
     const coords = ascent.map((p) => globe.getCoords(p.lat, p.lng, p.alt))
 
-    // ROCKET
-    const rocket = new THREE.Mesh(
-      new THREE.SphereGeometry(1.2, 16, 16),
-      new THREE.MeshBasicMaterial({ color: '#ffffff' })
-    )
-    rocket.renderOrder = 10
+    // ROCKET (3D model with a flickering flame; tilts to follow its path)
+    const rocket = makeRocketModel({ withFlame: true })
+    rocket.scale.setScalar(1.6)
+    const flame = rocket.getObjectByName('flame')
+    const UP = new THREE.Vector3(0, 1, 0)
+    const heading = new THREE.Vector3()
 
     // ASCENT TRAIL
     const trailGeom = new THREE.BufferGeometry()
@@ -782,17 +970,8 @@ export default function SceneViewport({
     trail.renderOrder = 10
 
     // ORBITING SATELLITE
-    const satellite =
-      flight.altKm > 0
-        ? new THREE.Mesh(
-            new THREE.SphereGeometry(1.2, 16, 16),
-            new THREE.MeshBasicMaterial({ color: '#00e5ff' })
-          )
-        : null
-
-    if (satellite) {
-      satellite.renderOrder = 10
-    }
+    const satellite = flight.altKm > 0 ? makeSatelliteModel() : null
+    if (satellite) satellite.scale.setScalar(1.3)
 
     // LANDING MARKER
     const landingMarker = satellite
@@ -832,6 +1011,42 @@ export default function SceneViewport({
     // RAF id, so the cleanup can cancel the loop immediately
     let raf = null
 
+    // CAMERA FOLLOW: the view glides along with the rocket, then the satellite.
+    // The camera is moved directly in 3D (no lat/lng round trip, so no wobble over the
+    // poles) with time-based easing, so it's equally smooth at any frame rate.
+    // Dragging the globe hands control back to you; zooming with the wheel keeps
+    // following but stops the automatic zoom.
+    const FOLLOW_SMOOTHING_MS = 350 // higher = lazier camera, lower = snappier
+    const ASCENT_VIEW_ALTITUDE = 0.9 // camera distance during the climb (globe radii above the surface)
+    const ORBIT_VIEW_ALTITUDE = 1.6 // camera distance once in orbit
+    const camera = globe.camera()
+    const globeRadius = globe.getGlobeRadius()
+    const camDir = new THREE.Vector3()
+    const targetDir = new THREE.Vector3()
+    let following = true
+    let userZoomed = false
+    const viewEl = globeRef.current
+    const stopFollowing = () => { following = false }
+    const onWheel = () => { userZoomed = true }
+    viewEl?.addEventListener('pointerdown', stopFollowing)
+    viewEl?.addEventListener('wheel', onWheel, { passive: true })
+
+    const followCamera = (position, targetAltitude, dtMs) => {
+      if (!following) return
+      const k = 1 - Math.exp(-dtMs / FOLLOW_SMOOTHING_MS) // fraction of the gap to close this frame
+
+      const distance = camera.position.length()
+      camDir.copy(camera.position).normalize()
+      targetDir.copy(position).normalize()
+      camDir.lerp(targetDir, k).normalize()
+
+      const targetDistance = globeRadius * (1 + targetAltitude)
+      const nextDistance = userZoomed ? distance : distance + (targetDistance - distance) * k
+
+      camera.position.copy(camDir).multiplyScalar(nextDistance)
+      camera.lookAt(0, 0, 0)
+    }
+
     const tick = () => {
       const now = performance.now()
       const dt = now - last
@@ -854,6 +1069,11 @@ export default function SceneViewport({
         const z = a.z + (b.z - a.z) * k
 
         rocket.position.set(x, y, z)
+        // Point the nose along the direction of travel (straight up at liftoff)
+        heading.set(b.x - a.x, b.y - a.y, b.z - a.z)
+        if (heading.lengthSq() > 1e-9) rocket.quaternion.setFromUnitVectors(UP, heading.normalize())
+        if (flame) flame.scale.set(1, 0.8 + Math.random() * 0.5, 1) // flicker
+        followCamera(rocket.position, ASCENT_VIEW_ALTITUDE, dt)
 
         // Update trail
         const pos = trailGeom.attributes.position
@@ -903,6 +1123,9 @@ export default function SceneViewport({
           satelliteCoords.y,
           satelliteCoords.z
         )
+        // Keep the dish pointing at Earth
+        satellite.quaternion.setFromUnitVectors(UP, satellite.position.clone().normalize())
+        followCamera(satellite.position, ORBIT_VIEW_ALTITUDE, dt)
 
         // Green landing zone: stays a fixed angular distance ahead of the spacecraft
         if (landingMarker) {
@@ -940,6 +1163,8 @@ export default function SceneViewport({
         cancelAnimationFrame(raf)
         raf = null
       }
+      viewEl?.removeEventListener('pointerdown', stopFollowing)
+      viewEl?.removeEventListener('wheel', onWheel)
 
       globe.scene().remove(rocket, trail)
 
@@ -951,16 +1176,12 @@ export default function SceneViewport({
         globe.scene().remove(landingMarker)
       }
 
-      rocket.geometry.dispose()
-      rocket.material.dispose()
+      disposeModel(rocket)
 
       trailGeom.dispose()
       trail.material.dispose()
 
-      if (satellite) {
-        satellite.geometry.dispose()
-        satellite.material.dispose()
-      }
+      if (satellite) disposeModel(satellite)
 
       if (landingMarker) {
         landingMarker.geometry.dispose()
