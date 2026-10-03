@@ -1,8 +1,7 @@
 import os
 
 from flask import Flask, jsonify, request
-from Calculations import calculate_launch_windows
-
+from backend.Calculations import calculate_launch_windows
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)

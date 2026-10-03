@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from backend.Calculations import calculate_launch_windows
 
 from backend.flaskr.weather.weatherApi import (
@@ -7,7 +5,9 @@ from backend.flaskr.weather.weatherApi import (
 )
 
 
+# =========================================================
 # Launch site mapping
+# =========================================================
 
 ORBITAL_TO_WEATHER_SITE = {
     "CapeCanaveral": "cape-canaveral",
@@ -15,32 +15,35 @@ ORBITAL_TO_WEATHER_SITE = {
 }
 
 
+# =========================================================
 # Generate launch windows + weather
+# =========================================================
 
 def generate_launch_windows_with_weather(
     launch_site,
     orbit_type,
+    altitude=500_000,
     raan=30,
-    window_minutes=10,
-    vehicle_duration=480,
-    number_of_windows=5
+    vehicle_duration=480
 ):
 
+    # -----------------------------------------------------
     # 1. Get orbital windows from Oliver's code
+    # -----------------------------------------------------
 
-    current_time = datetime.now(timezone.utc)
-
-    orbital_windows = calculate_launch_windows(
-        launch_site,
-        orbit_type,
-        raan,
-        current_time,
-        window_minutes,
-        vehicle_duration,
-        number_of_windows
+    orbital_result = calculate_launch_windows(
+        orbit_type=orbit_type,
+        altitude=altitude,
+        launch_site=launch_site,
+        raan=raan,
+        vehicle_duration=vehicle_duration
     )
 
-    # 2. Convert launch site name to weather site ID
+    orbital_windows = orbital_result["windows"]
+
+    # -----------------------------------------------------
+    # 2. Convert orbital launch site to weather site
+    # -----------------------------------------------------
 
     weather_site = ORBITAL_TO_WEATHER_SITE.get(
         launch_site
@@ -51,25 +54,42 @@ def generate_launch_windows_with_weather(
             f"Unknown launch site: {launch_site}"
         )
 
-    # 3. Check weather for all orbital windows
+    # -----------------------------------------------------
+    # 3. Check weather for each orbital window
+    # -----------------------------------------------------
 
     windows_with_weather = check_orbital_windows(
         weather_site,
         orbital_windows
     )
 
-    return windows_with_weather
+    # -----------------------------------------------------
+    # 4. Return combined result
+    # -----------------------------------------------------
 
-# TESTING 
+    return {
+        "launch_site": orbital_result["launch_site"],
+        "orbit_type": orbital_result["orbit_type"],
+        "inclination": orbital_result["inclination"],
+        "altitude": orbital_result["altitude"],
+        "azimuth": orbital_result["azimuth"],
+        "adjusted_azimuth": orbital_result["adjusted_azimuth"],
+        "windows": windows_with_weather
+    }
+
+
+# =========================================================
+# TEST
+# =========================================================
+
 if __name__ == "__main__":
 
-    results = generate_launch_windows_with_weather(
+    result = generate_launch_windows_with_weather(
         launch_site="CapeCanaveral",
         orbit_type="LEO",
+        altitude=500_000,
         raan=30,
-        window_minutes=10,
-        vehicle_duration=480,
-        number_of_windows=5
+        vehicle_duration=480
     )
 
     print()
@@ -77,7 +97,21 @@ if __name__ == "__main__":
     print("LAUNCH WINDOWS + WEATHER")
     print("==============================")
 
-    for window in results:
+    print()
+    print("Launch Site:", result["launch_site"])
+    print("Orbit Type:", result["orbit_type"])
+    print("Inclination:", result["inclination"])
+    print("Altitude:", result["altitude"])
+    print("Azimuth:", result["azimuth"])
+    print("Adjusted Azimuth:", result["adjusted_azimuth"])
+
+    print()
+    print(
+        "Number of windows:",
+        len(result["windows"])
+    )
+
+    for window in result["windows"]:
 
         print()
         print("Window:", window["id"])
@@ -85,3 +119,12 @@ if __name__ == "__main__":
         print("Peak:", window["peak"])
         print("End:", window["end"])
         print("Weather:", window["weather"])
+        print("Forecast hour:", window["weather_time"])
+
+        print("Weather checks:")
+
+        for name, check in window["checks"].items():
+
+            print(
+                f"  {name}: {check['status']}"
+            )
