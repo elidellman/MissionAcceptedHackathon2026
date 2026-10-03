@@ -3,7 +3,7 @@ import { Center, Loader, Text } from '@mantine/core'
 import SceneViewport from '../features/mission-control/SceneViewport.jsx'
 import HudOverlay from '../features/mission-control/HudOverlay.jsx'
 import MissionInputPanel from '../features/mission-control/MissionInputPanel.jsx'
-import { DEFAULT_PARAMS } from '../features/mission-control/launchConfig.js'
+import { DEFAULT_PARAMS, ISS, getSite } from '../features/mission-control/launchConfig.js'
 import { fetchLaunchWindows, fetchTrajectory } from '../api/missionApi.js'
 import classes from '../features/mission-control/MissionControl.module.css'
 
@@ -20,21 +20,33 @@ import classes from '../features/mission-control/MissionControl.module.css'
  * Data comes from src/api/missionApi.js (mock data until USE_MOCK = false).
  */
 export default function MissionControl() {
-  const [params, setParams] = useState(DEFAULT_PARAMS)
+  const [previewParams, setPreviewParams] = useState(DEFAULT_PARAMS)
+  const [submittedParams, setSubmittedParams] = useState(DEFAULT_PARAMS)
   const [mission, setMission] = useState(null)
   const [windows, setWindows] = useState([])
   const [loadingWindows, setLoadingWindows] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
   const [trajectory, setTrajectory] = useState([])
   const [error, setError] = useState(null)
-  const [shellsVisible, setShellsVisible] = useState({ leo: true, polar: true, sso: true })
+  const [shellsVisible, setShellsVisible] = useState({ leo: false, polar: false, sso: false })
+  // Launch site whose live feed is open (set by clicking a site that has `liveFeed` on the globe)
+  const [liveFeedSite, setLiveFeedSite] = useState(null)
 
-  // 2. mission + windows, re-run whenever the inputs are submitted
+  // If a live feed is open, keep it on the selected site (dropdown change, globe click or Calculate)
+  useEffect(() => {
+    const site = getSite(previewParams.siteId)
+    // (the ISS feed isn't tied to a launch site, so it stays open)
+    setLiveFeedSite((current) => (!current || current.id === ISS.id ? current : site?.liveFeed ? site : null))
+  }, [previewParams.siteId])
+
+  // 2. mission + windows, re-run whenever the user submits a real mission change
   useEffect(() => {
     let cancelled = false
     setLoadingWindows(true)
     setError(null)
-    fetchLaunchWindows(params)
+    setTrajectory([])
+    setSelectedId(null)
+    fetchLaunchWindows(submittedParams)
       .then(({ mission, windows }) => {
         if (cancelled) return
         setMission(mission)
@@ -46,7 +58,7 @@ export default function MissionControl() {
     return () => {
       cancelled = true
     }
-  }, [params])
+  }, [submittedParams])
 
   // 4. trajectory for the selected window
   useEffect(() => {
@@ -77,9 +89,27 @@ export default function MissionControl() {
         onSelect={setSelectedId}
         trajectory={trajectory}
         shellsVisible={shellsVisible}
+        draftParams={previewParams}
+        onTargetBaseChange={(nextTarget) => {
+          if (!nextTarget?.id) return
+          setPreviewParams((current) => ({
+            ...current,
+            siteId: nextTarget.id,
+          }))
+        }}
+        onLaunchSiteClick={(site) => setLiveFeedSite(site.liveFeed ? site : null)}
+        onIssClick={() => setLiveFeedSite(ISS)}
       />
-      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible}>
-        <MissionInputPanel params={params} onSubmit={setParams} loading={loadingWindows} />
+      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible} liveFeedSite={liveFeedSite} onCloseLiveFeed={() => setLiveFeedSite(null)}>
+        <MissionInputPanel
+          params={previewParams}
+          onPreviewChange={setPreviewParams}
+          onSubmit={(next) => {
+            setSubmittedParams(next)
+            setPreviewParams(next)
+          }}
+          loading={loadingWindows}
+        />
       </HudOverlay>
       {error && (
         <Text c="red" size="sm" className={classes.errorBanner}>
