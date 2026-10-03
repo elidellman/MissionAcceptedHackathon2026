@@ -5,7 +5,7 @@ import HudOverlay from '../features/mission-control/HudOverlay.jsx'
 import MissionInputPanel from '../features/mission-control/MissionInputPanel.jsx'
 import { DEFAULT_PARAMS, ISS, getSite } from '../features/mission-control/launchConfig.js'
 import { fetchLaunchWindows, fetchTrajectory } from '../api/missionApi.js'
-import { DEFAULT_TIME_SCALE } from '../features/mission-control/simulationConfig.js'
+ import { DEFAULT_TIME_SCALE } from '../features/mission-control/simConfig.js'
 import classes from '../features/mission-control/MissionControl.module.css'
 
 /**
@@ -166,11 +166,12 @@ export default function MissionControl() {
         onIssClick={() => setLiveFeedSite(ISS)}
       />
 
-      <HudOverlay
+     <HudOverlay
         mission={mission}
         windows={windows}
         selectedId={selectedId}
         onSelect={handleSelectWindow}
+        onSimulate={handleSimulateLaunch}  
         simulation={simulation}
         timeScale={timeScale}
         onTimeScaleChange={setTimeScale}

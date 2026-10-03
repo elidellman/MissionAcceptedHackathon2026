@@ -9,7 +9,7 @@ import {
   ASCENT_DURATION_MS,
   ASCENT_RATE,
   DEFAULT_TIME_SCALE,
-} from './simulationConfig.js'
+} from './simConfig.js'
 const EARTH_R = 6371
 const ALT_SCALE = 1
 const altFrac = km => (km / EARTH_R) * ALT_SCALE
@@ -883,10 +883,11 @@ export default function SceneViewport({
 
     if (!globe) return
 
-    // const activeTargetBase =
-    //   LAUNCH_SITES.find(
-    //     s => s.id === siteId
-    //   ) ?? LAUNCH_SITES[0]
+    const activeTargetBase =
+      (draftParams?.siteId && LAUNCH_SITES.find((s) => s.id === draftParams.siteId)) ||
+      targetBase ||
+      mission?.launchSite ||
+      LAUNCH_SITES[0]
 
     const {
       ascent,
@@ -940,11 +941,7 @@ export default function SceneViewport({
       .pathTransitionDuration(0)
       .pathResolution(1)
 
-    const activeTargetBase =
-      (draftParams?.siteId && LAUNCH_SITES.find((s) => s.id === draftParams.siteId)) ||
-      targetBase ||
-      mission?.launchSite ||
-      LAUNCH_SITES[0]
+
 
     const markers = []
     LAUNCH_SITES.forEach((launchSite) => {
@@ -1057,10 +1054,20 @@ export default function SceneViewport({
 
   // Launch animation
   useEffect(() => {
+    
     const globe = globeInstance.current
     const flight = flightRef.current
     const ascent = flight.ascent
 
+       if (!globe || !simulation || !ascent || ascent.length < 2) {
+      console.log('SIM EFFECT SKIPPED', {
+        hasGlobe: !!globe,
+        simulation,
+        ascentPoints: ascent?.length ?? 0,
+      })
+      return
+    }
+    
     /*
      * IMPORTANT:
      *
@@ -1078,7 +1085,12 @@ export default function SceneViewport({
     ) {
       return
     }
-
+    console.log('SIM START', {
+  ascentPoints: ascent.length,
+  timeScale: timeScaleRef.current,
+  ASCENT_DURATION_MS,
+  ASCENT_RATE,
+})
     const coords = ascent.map((p) =>
       globe.getCoords(
         p.lat,
