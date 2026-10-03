@@ -1,4 +1,6 @@
 import { Badge, Card, Container, Group, List, SimpleGrid, Stack, Text, Title } from '@mantine/core'
+import PageCredits from '../components/PageCredits.jsx'
+import { PAGE_CREDITS } from '../credits.js'
 
 const ORBITS = [
   {
@@ -77,6 +79,8 @@ export default function Info() {
             <Badge color="red" size="lg">NO-GO</Badge>
           </Group>
         </Stack>
+
+        <PageCredits ids={PAGE_CREDITS.info} />
       </Stack>
     </Container>
   )

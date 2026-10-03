@@ -14,15 +14,15 @@ import {
   mockTrajectoryResponse,
 } from '../features/mission-control/mockData.js'
 
-// TODO(API): set to false once the Flask endpoints below exist.
-// While true, the app uses fake data from mockData.js and never calls the backend.
-export const USE_MOCK = true
+// false = real Flask backend (run `flask --app flaskr run` in backend/).
+// Set back to true to demo without the backend: the app then uses fake data from mockData.js.
+export const USE_MOCK = false
 
 export const ENDPOINTS = {
-  test: '/api/test', //                                  exists today
-  launchSites: '/api/launch-sites', //                   TODO(API)
-  launchWindows: '/api/launch-windows', //               TODO(API)  ?site_id=&orbit=&inclination_deg=&altitude_km=&days=
-  trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`, // TODO(API)
+  test: '/api/test',
+  launchSites: '/api/launch-sites',
+  launchWindows: '/api/launch-windows', // ?site_id=&orbit=&inclination_deg=&altitude_km=&days=
+  trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`,
 }
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -46,7 +46,13 @@ export async function fetchLaunchSites() {
  * Params come from the Mission Inputs panel.
  * → { mission, windows }
  */
-export async function fetchLaunchWindows({ siteId, orbit, inclinationDeg, altitudeKm, days }) {
+export async function fetchLaunchWindows({
+  siteId,
+  orbit,
+  inclinationDeg,
+  altitudeKm,
+  days,
+}) {
   const query = {
     site_id: siteId,
     orbit,
@@ -54,14 +60,22 @@ export async function fetchLaunchWindows({ siteId, orbit, inclinationDeg, altitu
     altitude_km: String(altitudeKm),
     days: String(days),
   }
+
   let data
+
   if (USE_MOCK) {
     await delay(300)
     data = mockLaunchWindowsResponse(query)
   } else {
-    data = await getJson(`${ENDPOINTS.launchWindows}?${new URLSearchParams(query)}`)
+    data = await getJson(
+      `${ENDPOINTS.launchWindows}?${new URLSearchParams(query)}`
+    )
   }
-  return { mission: toMission(data.mission), windows: data.windows.map(toWindow) }
+
+  return {
+    mission: toMission(data.mission),
+    windows: data.windows.map(toWindow),
+  }
 }
 
 /**
@@ -79,14 +93,18 @@ export async function fetchTrajectory(windowId) {
 
 const toSite = (s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon })
 
-const toMission = (m) => ({
-  name: m.name,
-  vehicle: m.vehicle,
-  launchSite: toSite(m.launch_site),
-  targetOrbit: m.target_orbit, // 'LEO' | 'Polar' | 'SSO'
-  inclinationDeg: m.inclination_deg,
-  altitudeKm: m.altitude_km,
-})
+function toMission(mission) {
+  return {
+    name: mission.name,
+    vehicle: mission.vehicle,
+    launchSite: mission.launch_site,
+    targetOrbit: mission.target_orbit,
+    inclinationDeg: mission.inclination_deg,
+    altitudeKm: mission.altitude_km,
+    azimuthDeg: mission.azimuth_deg,
+    reachable: mission.reachable,
+  }
+}
 
 const toWindow = (w) => ({
   id: w.id,
