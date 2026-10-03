@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta, timezone
 
 from launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
@@ -7,6 +8,26 @@ from lib_Calculations import (
     get_AdjustedAzimuth,
     get_window_times
 )
+
+
+# The Space Devs API allows ~15 requests/hour without a key, so cache each site's
+# upcoming launches for 30 minutes. If the fetch fails, skip the conflict check
+# instead of failing the whole calculation.
+_LAUNCH_CACHE_SECONDS = 30 * 60
+_launch_cache = {}  # launch_site -> (fetched_at, launches)
+
+
+def _existing_launches(launch_site, fetch):
+    cached = _launch_cache.get(launch_site)
+    if cached and time.time() - cached[0] < _LAUNCH_CACHE_SECONDS:
+        return cached[1]
+    try:
+        launches = fetch()
+    except Exception as error:
+        print(f"[launch_data] couldn't fetch existing launches for {launch_site}: {error}")
+        return cached[1] if cached else []
+    _launch_cache[launch_site] = (time.time(), launches)
+    return launches
 
 
 def calculate_launch_windows(
@@ -62,14 +83,14 @@ def calculate_launch_windows(
 
     # Check existing launches
     if launch_site == "CapeCanaveral":
-        launches = get_cape_launches()
+        launches = _existing_launches(launch_site, get_cape_launches)
         windows = filter_conflicting_windows(
             windows,
             launches
         )
 
     if launch_site == "SpacePort":
-        launches = get_ns_launches()
+        launches = _existing_launches(launch_site, get_ns_launches)
         windows = filter_conflicting_windows(
             windows,
             launches
