@@ -39,7 +39,7 @@ function useWidth(ref) {
   return width
 }
 
-export default function HudOverlay({ mission, windows, selectedId, onSelect, shellsVisible, onShellsChange, liveFeedSite, onCloseLiveFeed, children }) {
+export default function HudOverlay({ mission, siteId, loading, windows, selectedId, onSelect, shellsVisible, onShellsChange, liveFeedSite, onCloseLiveFeed, children }) {
   const topRightRef = useRef(null)
   const topRightWidth = useWidth(topRightRef)
   //console.log('launchSite:', mission.launchSite)
@@ -65,12 +65,19 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
       <Paper ref={topRightRef} className={`${classes.panel} ${classes.topRight}`} p="sm">
         <Text size="xs" c="dimmed" tt="uppercase" fw={700} ta="center">Next window</Text>
         <Text className={classes.countdown} ta="center">{next ? countdown : '—'}</Text>
-        <Text size="xs" c="dimmed" ta="center">{mission.launchSite.name}</Text>
-        <Group gap={6} mt={4} justify="center"> 
-          <Badge size="sm" variant="light">{mission.targetOrbit}</Badge>
-          <Badge size="sm" variant="outline" color="gray">{mission.inclinationDeg}°</Badge>
-          <Badge size="sm" variant="outline" color="gray">{mission.altitudeKm} km</Badge>
-        </Group>
+        {mission ? (
+          <>
+            {/* The site the windows were calculated for (not the dropdown preview) */}
+            <Text size="xs" c="dimmed" ta="center">{mission.launchSite.name}</Text>
+            <Group gap={6} mt={4} justify="center">
+              <Badge size="sm" variant="light">{mission.targetOrbit}</Badge>
+              <Badge size="sm" variant="outline" color="gray">{mission.inclinationDeg}°</Badge>
+              <Badge size="sm" variant="outline" color="gray">{mission.altitudeKm} km</Badge>
+            </Group>
+          </>
+        ) : (
+          <Text size="xs" c="dimmed" ta="center">{loading ? 'Calculating…' : 'Click “Calculate windows” to start'}</Text>
+        )}
         
         {/* Shell toggle buttons */}
         <Stack gap="xs" mt={12} pt={8} style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
@@ -116,7 +123,7 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
             </Button>
           </Group>
         </Stack>
-        <ViewingSpots spots={VIEWING_SPOTS[mission.launchSite.id] ?? []} />
+        <ViewingSpots spots={VIEWING_SPOTS[mission?.launchSite.id ?? siteId] ?? []} />
         <PageCredits ids={PAGE_CREDITS.missionControl} collapsible mt={12} />
       </Paper>
 
@@ -154,7 +161,14 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, she
           </Group>
         </UnstyledButton>
 
-        {windowsOpen && (
+        {/* Calculated, but nothing came back (e.g. orbit not reachable from this site) */}
+        {windowsOpen && mission && !windows.length && (
+          <Text size="xs" c="dimmed" ta="center" mt={6}>
+            No launch windows for {mission.targetOrbit} from {mission.launchSite.name}.
+          </Text>
+        )}
+
+        {windowsOpen && windows.length > 0 && (
           <Group gap="xs" wrap="nowrap" mt={6} className={classes.windowRow}>
             {windows.map((w) => {
               const wx = WEATHER[w.weather]

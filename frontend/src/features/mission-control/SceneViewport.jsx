@@ -297,6 +297,11 @@ export default function SceneViewport({
   // Latest click callback, kept in a ref so the globe effect doesn't need to re-run when it changes
   const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
   onLaunchSiteClickRef.current = onLaunchSiteClick
+  const onTargetBaseChangeRef = useRef(onTargetBaseChange)
+  onTargetBaseChangeRef.current = onTargetBaseChange
+  // Site the camera last flew to: the camera only moves when this changes, so toggling
+  // debris / shells / anything else redraws in place instead of jumping back to the pad
+  const lastViewedSiteRef = useRef(null)
   const onIssClickRef = useRef(onIssClick)
   onIssClickRef.current = onIssClick
 
@@ -647,8 +652,9 @@ export default function SceneViewport({
         if (!clickedSite) return
 
         setTargetBase(clickedSite)
-        if (onTargetBaseChange) onTargetBaseChange(clickedSite)
+        onTargetBaseChangeRef.current?.(clickedSite)
         onLaunchSiteClickRef.current?.(clickedSite)
+        lastViewedSiteRef.current = clickedSite.id
         globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
       })
       .onPointHover((point) => {
@@ -679,8 +685,11 @@ export default function SceneViewport({
     missionLayers.current = { paths, objects: [intersectionPoint] }
     applyLayers()
 
-    globe.pointOfView({ lat: activeTargetBase.lat, lng: activeTargetBase.lon }, 2000)
-  }, [mission, trajectory, draftParams, targetBase, onTargetBaseChange])
+    if (lastViewedSiteRef.current !== activeTargetBase.id) {
+      lastViewedSiteRef.current = activeTargetBase.id
+      globe.pointOfView({ lat: activeTargetBase.lat, lng: activeTargetBase.lon }, 2000)
+    }
+  }, [mission, trajectory, draftParams, targetBase])
 
   // ISS: poll the live position, refresh the orbit track every few minutes
   useEffect(() => {

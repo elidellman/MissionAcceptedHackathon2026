@@ -45,7 +45,7 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
 
     delete normalized.launchSite
 
-    if (JSON.stringify(normalized) === JSON.stringify(params)) return
+    // Always submit: `params` is the live preview, so comparing against it would skip real changes
     if (onPreviewChange) onPreviewChange(normalized)
     if (onSubmit) onSubmit(normalized)
   }

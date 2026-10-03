@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Center, Loader, Text } from '@mantine/core'
+import { Text } from '@mantine/core'
 import SceneViewport from '../features/mission-control/SceneViewport.jsx'
 import HudOverlay from '../features/mission-control/HudOverlay.jsx'
 import MissionInputPanel from '../features/mission-control/MissionInputPanel.jsx'
@@ -21,10 +21,11 @@ import classes from '../features/mission-control/MissionControl.module.css'
  */
 export default function MissionControl() {
   const [previewParams, setPreviewParams] = useState(DEFAULT_PARAMS)
-  const [submittedParams, setSubmittedParams] = useState(DEFAULT_PARAMS)
+  // null until the user clicks "Calculate windows": the countdown and windows bar start empty
+  const [submittedParams, setSubmittedParams] = useState(null)
   const [mission, setMission] = useState(null)
   const [windows, setWindows] = useState([])
-  const [loadingWindows, setLoadingWindows] = useState(true)
+  const [loadingWindows, setLoadingWindows] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [trajectory, setTrajectory] = useState([])
   const [error, setError] = useState(null)
@@ -41,11 +42,15 @@ export default function MissionControl() {
 
   // 2. mission + windows, re-run whenever the user submits a real mission change
   useEffect(() => {
+    if (!submittedParams) return
     let cancelled = false
     setLoadingWindows(true)
     setError(null)
     setTrajectory([])
     setSelectedId(null)
+    // Clear the previous site's results so they never show under the new site
+    setMission(null)
+    setWindows([])
     fetchLaunchWindows(submittedParams)
       .then(({ mission, windows }) => {
         if (cancelled) return
@@ -72,14 +77,6 @@ export default function MissionControl() {
     }
   }, [selectedId])
 
-  if (!mission) {
-    return (
-      <Center className={classes.root}>
-        {error ? <Text c="red">Couldn't load mission data: {error}</Text> : <Loader />}
-      </Center>
-    )
-  }
-
   return (
     <div className={classes.root}>
       <SceneViewport
@@ -100,7 +97,7 @@ export default function MissionControl() {
         onLaunchSiteClick={(site) => setLiveFeedSite(site.liveFeed ? site : null)}
         onIssClick={() => setLiveFeedSite(ISS)}
       />
-      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible} liveFeedSite={liveFeedSite} onCloseLiveFeed={() => setLiveFeedSite(null)}>
+      <HudOverlay mission={mission} siteId={previewParams.siteId} loading={loadingWindows} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible} liveFeedSite={liveFeedSite} onCloseLiveFeed={() => setLiveFeedSite(null)}>
         <MissionInputPanel
           params={previewParams}
           onPreviewChange={setPreviewParams}
