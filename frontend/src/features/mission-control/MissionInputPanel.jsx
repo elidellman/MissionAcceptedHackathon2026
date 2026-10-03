@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ActionIcon,
   Alert,
@@ -19,24 +19,27 @@ import classes from './MissionControl.module.css'
 
 /**
  * MissionInputPanel — collapsible panel on the LEFT of the 3D render.
- * The user picks a launch site + orbit type (+ days to search) and hits "Calculate windows".
- * Inclination and altitude are NOT editable: they come from ORBIT_PRESETS in launchConfig.js.
- * Weather is NOT entered here: the backend fills it in automatically per window.
- *
- * Props:
- *   params    current submitted params { siteId, orbit, inclinationDeg, altitudeKm, days }
- *   onSubmit  (params) => void — MissionControl re-fetches launch windows with these
- *   loading   true while windows are being calculated
+ * The user picks a launch site + orbit preset (+ days to search) and hits "Calculate windows".
+ * Orbit values are editable in-place using the preset midpoints as default values.
  */
 export default function MissionInputPanel({ params, onSubmit, loading }) {
   const [open, setOpen] = useState(() => window.innerWidth >= 700)
   const [draft, setDraft] = useState(params)
 
+  useEffect(() => {
+    setDraft(params)
+  }, [params])
+
   const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }))
 
   const pickOrbit = (orbit) => {
     const p = ORBIT_PRESETS[orbit]
-    setDraft((d) => ({ ...d, orbit, inclinationDeg: p.inclinationDeg, altitudeKm: p.altitudeKm }))
+    setDraft((d) => ({
+      ...d,
+      orbit,
+      inclinationDeg: p.inclinationDeg,
+      altitudeKm: p.altitudeKm,
+    }))
   }
 
   const site = getSite(draft.siteId)
@@ -91,9 +94,32 @@ export default function MissionInputPanel({ params, onSubmit, loading }) {
 
             <div>
               <Text size="sm" fw={500} mb={4}>
-                Orbit type
+                Orbit preset
               </Text>
-              <SegmentedControl fullWidth data={['LEO', 'Polar', 'SSO']} value={draft.orbit} onChange={pickOrbit} />
+              <SegmentedControl
+                fullWidth
+                data={['LEO', 'Polar', 'SSO']}
+                value={draft.orbit}
+                onChange={pickOrbit}
+              />
+
+              <Stack gap="xs" mt="sm">
+                <NumberInput
+                  label="Inclination (°)"
+                  value={draft.inclinationDeg}
+                  onChange={(value) => set('inclinationDeg')(Number(value) || 0)}
+                  min={0}
+                  max={180}
+                  step={0.1}
+                />
+                <NumberInput
+                  label="Altitude (km)"
+                  value={draft.altitudeKm}
+                  onChange={(value) => set('altitudeKm')(Number(value) || 0)}
+                  min={0}
+                  step={1}
+                />
+              </Stack>
             </div>
 
             <Group gap="xs">

@@ -1,0 +1,209 @@
+/* ── Page shell: background layers + scrolling sections ─────────── */
+.root {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #03040a;
+  --p: 0; /* scroll progress 0 → 1, set from JS */
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.stars {
+  background-image: url('../../assets/space/stars.jpg');
+  opacity: 0.9;
+  transform: translateY(calc(var(--p) * -3%)) scale(1.06);
+}
+
+/* Blurred Earth: rises and turns slightly as you scroll */
+.earth {
+  background-image: url('../../assets/space/pres-earth.webp');
+  filter: blur(7px) brightness(0.62) saturate(1.1);
+  transform: translateY(calc(18% - var(--p) * 22%)) scale(calc(1.05 + var(--p) * 0.12)) rotate(calc(var(--p) * -6deg));
+  transition: transform 120ms linear;
+}
+
+/* RADARSAT-style satellites on their orbit: sharp, slowly drifting */
+.sats {
+  background-image: url('../../assets/space/rcm-satellites.webp');
+  opacity: 0.8;
+  transform: translateY(calc(18% - var(--p) * 22%)) scale(calc(1.05 + var(--p) * 0.12)) rotate(calc(var(--p) * -6deg));
+  animation: floaty 14s ease-in-out infinite alternate;
+}
+
+@keyframes floaty {
+  from { translate: 0 0; }
+  to   { translate: 0 -10px; }
+}
+
+/* Vignette so text stays readable everywhere */
+.vignette {
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(3, 4, 10, 0.1) 0%, rgba(3, 4, 10, 0.65) 75%),
+    linear-gradient(180deg, rgba(3, 4, 10, 0.55) 0%, rgba(3, 4, 10, 0) 35%);
+}
+
+.scroller {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.scroller::-webkit-scrollbar { display: none; }
+
+/* ── One section = one "slide" ──────────────────────────────────── */
+.section {
+  min-height: 100%;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  padding: 72px 24px;
+}
+
+.inner {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+/* Glass text box */
+.textBox {
+  background: rgba(10, 14, 24, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 28px 32px;
+}
+
+.kicker {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mantine-color-orange-4);
+}
+
+/* Image holder: shows the screenshot, or a dashed placeholder */
+.imageHolder {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 14, 24, 0.55);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+.imageHolder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.placeholder {
+  position: absolute;
+  inset: 10px;
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+.placeholderIcon { font-size: 1.8rem; opacity: 0.7; }
+
+/* ── Scroll-in transitions ──────────────────────────────────────── */
+/* Each animated element has class .anim and a stagger index --i */
+.anim {
+  opacity: 0;
+  transition:
+    opacity 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1),
+    filter 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: calc(var(--i, 0) * 120ms);
+}
+[data-transition='fade-up'] .anim     { transform: translateY(40px); }
+[data-transition='slide-left'] .anim  { transform: translateX(-60px); }
+[data-transition='slide-right'] .anim { transform: translateX(60px); }
+[data-transition='zoom'] .anim        { transform: scale(0.92); }
+[data-transition='blur'] .anim        { filter: blur(14px); transform: scale(1.03); }
+
+[data-visible='true'] .anim {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* ── Navigation: dots on the right, counter bottom-left ─────────── */
+.dots {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 3;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+.dot[data-active='true'] {
+  background: var(--mantine-color-orange-5);
+  border-color: var(--mantine-color-orange-5);
+  box-shadow: 0 0 10px var(--mantine-color-orange-5);
+  transform: scale(1.25);
+}
+
+.counter {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  z-index: 3;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.credit {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  z-index: 3;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+@media (max-width: 700px) {
+  .dots { right: 8px; }
+  .textBox { padding: 20px; }
+  .section { padding: 56px 32px 56px 16px; }
+  .credit { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim { transition: none; opacity: 1; transform: none; filter: none; }
+  .sats { animation: none; }
+  .scroller { scroll-behavior: auto; }
+}

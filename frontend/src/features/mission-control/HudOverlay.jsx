@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Badge, Group, Paper, Stack, Text } from '@mantine/core'
+import { Badge, Button, Group, Paper, Stack, Text } from '@mantine/core'
 import classes from './MissionControl.module.css'
 
 const WEATHER = {
@@ -20,16 +20,15 @@ function useCountdown(targetIso) {
   return `T-${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`
 }
 
-/**
- * HudOverlay — 2D panels floating on top of the 3D scene.
- * The overlay ignores mouse events so the scene can be dragged/rotated;
- * individual panels re-enable them (see .panel in the CSS).
- */
 // Weather colour comes straight from the backend (`weather` on each window) — the frontend doesn't compute it.
 // The left side is the MissionInputPanel (rendered by pages/MissionControl.jsx), not part of this file.
-export default function HudOverlay({ mission, windows, selectedId, onSelect, children }) {
+export default function HudOverlay({ mission, windows, selectedId, onSelect, shellsVisible, onShellsChange, children }) {
   const next = windows[0]
   const countdown = useCountdown(next?.opensAt)
+
+  const toggleShell = (shell) => {
+    onShellsChange({ ...shellsVisible, [shell]: !shellsVisible[shell] })
+  }
 
   return (
     <div className={classes.hud}>
@@ -46,6 +45,38 @@ export default function HudOverlay({ mission, windows, selectedId, onSelect, chi
           <Badge size="sm" variant="outline" color="gray">{mission.inclinationDeg}°</Badge>
           <Badge size="sm" variant="outline" color="gray">{mission.altitudeKm} km</Badge>
         </Group>
+        
+        {/* Shell toggle buttons */}
+        <Stack gap="xs" mt={12} pt={8} style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Orbital shells</Text>
+          <Group gap={6}>
+            <Button
+              size="xs"
+              variant={shellsVisible.leo ? 'filled' : 'light'}
+              color="green"
+              onClick={() => toggleShell('leo')}
+            >
+              LEO
+            </Button>
+            <Button
+              size="xs"
+              variant={shellsVisible.polar ? 'filled' : 'light'}
+              color="orange"
+              onClick={() => toggleShell('polar')}
+            >
+              Polar
+            </Button>
+            <Button
+              size="xs"
+              variant={shellsVisible.sso ? 'filled' : 'light'}
+              color="blue"
+              onClick={() => toggleShell('sso')}
+            >
+              SSO
+            </Button>
+            
+          </Group>
+        </Stack>
       </Paper>
 
       {/* Bottom: launch windows list */}
