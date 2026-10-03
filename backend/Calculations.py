@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
 from lib_Calculations import (
     OrbitTypes,
     get_Azimuth,
@@ -57,6 +58,21 @@ def calculate_launch_windows(
             current_time,
             10,
             end_time
+        )
+
+    # Check existing launches
+    if launch_site == "CapeCanaveral":
+        launches = get_cape_launches()
+        windows = filter_conflicting_windows(
+            windows,
+            launches
+        )
+
+    if launch_site == "SpacePort":
+        launches = get_ns_launches()
+        windows = filter_conflicting_windows(
+            windows,
+            launches
         )
 
     return {
