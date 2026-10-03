@@ -188,8 +188,8 @@ export default function HudOverlay({
   }
 
   // Debris is on unless the state says otherwise
-  const debrisOn = shellsVisible.debris ?? true
-  const issOn = shellsVisible.iss ?? true
+  const debrisOn = shellsVisible.debris ?? false
+  const issOn = shellsVisible.iss ?? false
 
   return (
     <div className={classes.hud}>
@@ -302,9 +302,9 @@ export default function HudOverlay({
             </Button>
           </Group>
 
-          {/* Debris toggle */}
+          {/* Debris + ISS toggles, side by side */}
           <Text size="xs" c="dimmed" tt="uppercase" fw={700} ta="center" mt={4}>
-            Space debris
+            Debris &amp; space station
           </Text>
           <Group gap={6} justify="center">
             <Button
@@ -315,13 +315,6 @@ export default function HudOverlay({
             >
               {debrisOn ? 'Hide debris' : 'Show debris'}
             </Button>
-          </Group>
-
-          {/* ISS toggle */}
-          <Text size="xs" c="dimmed" tt="uppercase" fw={700} ta="center" mt={4}>
-            Space station
-          </Text>
-          <Group gap={6} justify="center">
             <Button
               size="xs"
               variant={issOn ? 'filled' : 'light'}
