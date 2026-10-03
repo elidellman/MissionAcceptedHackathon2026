@@ -18,8 +18,8 @@ export const LAUNCH_SITES = [
   },
 ]
 
-// Inclination + altitude per orbit type (inclinations from the challenge brief).
-// These are fixed: picking an orbit type in the panel sets both. Change them here.
+// Inclination + altitude per orbit type. Each preset uses the midpoint of its range
+// as the default values when the user picks that orbit.
 export const ORBIT_PRESETS = {
   LEO: { inclinationDeg: 45.1, altitudeKm: 500, hint: '~45.1°' },
   Polar: { inclinationDeg: 90, altitudeKm: 700, hint: '87.9° – 90°' },

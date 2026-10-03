@@ -38,14 +38,7 @@
   border-radius: 12px;
 }
 
-.globe {
-  width: min(32vmin, 260px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  margin-bottom: 16px;
-  background: radial-gradient(circle at 35% 30%, #3b82c4, #123a66 55%, #061424 100%);
-  box-shadow: 0 0 60px rgba(59, 130, 196, 0.35);
-}
+
 
 .placeholderTitle {
   margin: 0;

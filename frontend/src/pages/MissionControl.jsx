@@ -27,6 +27,7 @@ export default function MissionControl() {
   const [selectedId, setSelectedId] = useState(null)
   const [trajectory, setTrajectory] = useState([])
   const [error, setError] = useState(null)
+  const [shellsVisible, setShellsVisible] = useState({ leo: true, polar: true, sso: true })
 
   // 2. mission + windows, re-run whenever the inputs are submitted
   useEffect(() => {
@@ -75,8 +76,9 @@ export default function MissionControl() {
         selectedId={selectedId}
         onSelect={setSelectedId}
         trajectory={trajectory}
+        shellsVisible={shellsVisible}
       />
-      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId}>
+      <HudOverlay mission={mission} windows={windows} selectedId={selectedId} onSelect={setSelectedId} shellsVisible={shellsVisible} onShellsChange={setShellsVisible}>
         <MissionInputPanel params={params} onSubmit={setParams} loading={loadingWindows} />
       </HudOverlay>
       {error && (
