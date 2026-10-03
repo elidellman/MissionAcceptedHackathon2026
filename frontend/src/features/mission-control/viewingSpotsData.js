@@ -11,19 +11,13 @@ export const VIEWING_SPOTS = {
       address: '8 Broad St, Titusville, FL 32796',
       image: '/spots/space-view-park.jpg',
       distanceKm: 19,
-    },
-    {
-      name: 'Kennedy Space Center Visitor Complex',
-      address: 'State Rd 405, Merritt Island, FL 32953',
-      image: '/spots/ksc-visitor-complex.jpg',
-      distanceKm: 10,
-    },
+    }
   ],
   'nova-scotia': [
     {
-      name: 'Canso Waterfront',
-      address: 'Union St, Canso, NS B0H 1H0',
-      image: '/spots/canso-waterfront.jpg',
+      name: 'Betsys Beach',
+      address: 'Betsys Beach, Canso, NS B0H 1H0',
+      image: '/spots/betsys-beach.jpg',
       distanceKm: 5,
     },
     {

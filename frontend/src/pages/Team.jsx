@@ -7,7 +7,6 @@ const TEAM = [
   { name: 'Oliver', role: 'Backend Developer' },
   { name: 'Hazem', role: 'Backend Developer' },
   { name: 'Jeremy', role: 'Frontend Developer' },
-  { name: 'Jeremiah', role: 'Generalist' },
 ]
 
 export default function Team() {

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Button, Card, Code, Container, Stack, Text, Title } from '@mantine/core'
+import PageCredits from '../components/PageCredits.jsx'
+import { PAGE_CREDITS } from '../credits.js'
 
 export default function About() {
   const [response, setResponse] = useState('')
@@ -33,7 +35,7 @@ export default function About() {
           Built with React, Vite and Mantine on the frontend, and Flask on the backend.
         </Text>
         <Text c="dimmed" size="sm">
-          Challenge presented by MDA Space and ShiftKey Labs.
+          Challenge presented by MDA Space, ShiftKey Labs and the Canadian Space Agency.
         </Text>
 
         <Card withBorder padding="md">
@@ -49,6 +51,18 @@ export default function About() {
             )}
           </Stack>
         </Card>
+
+        <Stack gap="md">
+          <Title order={2} size="h3">Sources & credits</Title>
+          <Text size="sm" c="dimmed">
+            Mission Control uses the following third-party content and open-source software. All trademarks belong to
+            their owners; embedded videos and maps are shown through their providers' official embeds.
+          </Text>
+          <PageCredits ids={PAGE_CREDITS.missionControl} title="Mission Control" />
+          <PageCredits ids={[...PAGE_CREDITS.home, ...PAGE_CREDITS.presentation]} title="Home & Presentation" />
+          <PageCredits ids={PAGE_CREDITS.info} title="Launch Info" />
+          <PageCredits ids={PAGE_CREDITS.software} title="Open-source software" />
+        </Stack>
       </Stack>
     </Container>
   )

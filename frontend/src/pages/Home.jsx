@@ -2,6 +2,8 @@ import { Badge, Button, Container, Group, Paper, SimpleGrid, Stack, Text, ThemeI
 import { Link } from 'react-router-dom'
 import { ROUTES } from '../routes.js'
 import classes from './Home.module.css'
+import PageCredits from '../components/PageCredits.jsx'
+import { PAGE_CREDITS } from '../credits.js'
 
 const FEATURES = [
   {
@@ -74,6 +76,7 @@ export default function Home() {
             </Paper>
           ))}
         </SimpleGrid>
+        <PageCredits ids={PAGE_CREDITS.home} mt="xl" />
       </Container>
     </>
   )

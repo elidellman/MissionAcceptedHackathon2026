@@ -1,5 +1,7 @@
 import { VIEWING_SPOTS } from './viewingSpotsData.js'
 import ViewingSpots from './ViewingSpots'
+import PageCredits from '../../components/PageCredits.jsx'
+import { PAGE_CREDITS } from '../../credits.js'
 import { useEffect, useRef, useState } from 'react'
 import {
   Badge,
@@ -27,25 +29,18 @@ const formatTime = (ms) =>
     second: '2-digit',
   })
 
-function useSimulationClock(
-  launchIso,
-  simStartedAtMs,
-  timeScale
-) {
+function useSimulationClock(launchIso, simStartedAtMs, timeScale) {
   const [now, setNow] = useState(() => Date.now())
-
   const [sim, setSim] = useState({
     key: null,
     ms: 0,
   })
-
   const timeScaleRef = useRef(timeScale)
 
   useEffect(() => {
     timeScaleRef.current = timeScale
   }, [timeScale])
 
-  // Real clock
   useEffect(() => {
     const id = setInterval(() => {
       setNow(Date.now())
@@ -54,17 +49,12 @@ function useSimulationClock(
     return () => clearInterval(id)
   }, [])
 
-  // Simulation clock
   useEffect(() => {
     if (!simStartedAtMs) {
-      // IMPORTANT:
-      // Completely reset the simulated clock when the simulation
-      // is cancelled.
       setSim({
         key: null,
         ms: 0,
       })
-
       return
     }
 
@@ -73,15 +63,12 @@ function useSimulationClock(
     const id = setInterval(() => {
       const t = performance.now()
       const dt = t - last
-
       last = t
 
       setSim((prev) => ({
         key: simStartedAtMs,
         ms:
-          (prev.key === simStartedAtMs
-            ? prev.ms
-            : 0) +
+          (prev.key === simStartedAtMs ? prev.ms : 0) +
           dt * timeScaleRef.current,
       }))
     }, 100)
@@ -91,7 +78,6 @@ function useSimulationClock(
     }
   }, [simStartedAtMs])
 
-  // No window selected
   if (!launchIso) {
     return {
       label: 'Current time',
@@ -99,10 +85,8 @@ function useSimulationClock(
     }
   }
 
-  const launchMs =
-    new Date(launchIso).getTime()
+  const launchMs = new Date(launchIso).getTime()
 
-  // Window selected but not running
   if (!simStartedAtMs) {
     return {
       label: 'Simulation time',
@@ -110,17 +94,33 @@ function useSimulationClock(
     }
   }
 
-  const simElapsedMs =
-    sim.key === simStartedAtMs
-      ? sim.ms
-      : 0
+  const simElapsedMs = sim.key === simStartedAtMs ? sim.ms : 0
 
   return {
     label: 'Simulation time',
-    text: formatTime(
-      launchMs + simElapsedMs
-    ),
+    text: formatTime(launchMs + simElapsedMs),
   }
+}
+
+// Weather colour comes straight from the backend (`weather`) on each window.
+function useWidth(ref) {
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(
+        entry.borderBoxSize?.[0]?.inlineSize ?? el.offsetWidth
+      )
+    })
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+
+  return width
 }
 
 export default function HudOverlay({
@@ -134,35 +134,26 @@ export default function HudOverlay({
   simulation,
   timeScale,
   onTimeScaleChange,
+  liveFeedSite,
+  onCloseLiveFeed,
   children,
 }) {
-  const [windowsOpen, setWindowsOpen] =
-    useState(true)
+  const topRightRef = useRef(null)
+  const topRightWidth = useWidth(topRightRef)
+  const [windowsOpen, setWindowsOpen] = useState(true)
 
-  const selectedWindow =
-    windows.find(
-      (w) => w.id === selectedId
-    )
+  const selectedWindow = windows.find((w) => w.id === selectedId)
 
-  /*
-   * Only consider the simulation active if it
-   * belongs to the currently selected window.
-   *
-   * When the user selects another time, the parent
-   * should clear/replace `simulation`.
-   */
   const simStartedAtMs =
-    simulation &&
-    simulation.windowId === selectedId
+    simulation && simulation.windowId === selectedId
       ? simulation.nonce
       : null
 
-  const clock =
-    useSimulationClock(
-      selectedWindow?.opensAt,
-      simStartedAtMs,
-      timeScale
-    )
+  const clock = useSimulationClock(
+    selectedWindow?.opensAt,
+    simStartedAtMs,
+    timeScale
+  )
 
   const toggleShell = (shell) => {
     onShellsChange({
@@ -171,29 +162,11 @@ export default function HudOverlay({
     })
   }
 
-  /*
-   * Selecting a different time automatically
-   * invalidates the old simulation in the parent.
-   *
-   * Selecting the currently selected time again
-   * clears the selection entirely.
-   */
   const handleSelect = (windowId) => {
-    const nextId =
-      windowId === selectedId
-        ? null
-        : windowId
-
+    const nextId = windowId === selectedId ? null : windowId
     onSelect(nextId)
   }
 
-  /*
-   * Start a new simulation.
-   *
-   * If this is a different window, select it first.
-   * The parent should create a NEW simulation nonce
-   * through onSimulate.
-   */
   const handleSimulate = (windowId) => {
     if (windowId !== selectedId) {
       onSelect(windowId)
@@ -206,11 +179,9 @@ export default function HudOverlay({
     <div className={classes.hud}>
       {children}
 
-      {/* ============================= */}
-      {/* TOP RIGHT                      */}
-      {/* ============================= */}
-
+      {/* Top-right: simulation clock + current mission summary */}
       <Paper
+        ref={topRightRef}
         className={`${classes.panel} ${classes.topRight}`}
         p="sm"
       >
@@ -224,10 +195,7 @@ export default function HudOverlay({
           {clock.label}
         </Text>
 
-        <Text
-          className={classes.countdown}
-          ta="center"
-        >
+        <Text className={classes.countdown} ta="center">
           {clock.text}
         </Text>
 
@@ -253,19 +221,11 @@ export default function HudOverlay({
               {TIME_SCALES.map((scale) => (
                 <Menu.Item
                   key={scale}
-                  fw={
-                    scale === timeScale
-                      ? 700
-                      : 400
-                  }
-                  onClick={() =>
-                    onTimeScaleChange(scale)
-                  }
+                  fw={scale === timeScale ? 700 : 400}
+                  onClick={() => onTimeScaleChange(scale)}
                 >
                   {scale}×
-                  {scale === 1
-                    ? ' (real time)'
-                    : ''}
+                  {scale === 1 ? ' (real time)' : ''}
                 </Menu.Item>
               ))}
             </Menu.Dropdown>
@@ -281,31 +241,14 @@ export default function HudOverlay({
           {mission.launchSite.name}
         </Text>
 
-        <Group
-          gap={6}
-          mt={4}
-          justify="center"
-        >
-          <Badge
-            size="sm"
-            variant="light"
-          >
+        <Group gap={6} mt={4} justify="center">
+          <Badge size="sm" variant="light">
             {mission.targetOrbit}
           </Badge>
-
-          <Badge
-            size="sm"
-            variant="outline"
-            color="gray"
-          >
+          <Badge size="sm" variant="outline" color="gray">
             {mission.inclinationDeg}°
           </Badge>
-
-          <Badge
-            size="sm"
-            variant="outline"
-            color="gray"
-          >
+          <Badge size="sm" variant="outline" color="gray">
             {mission.altitudeKm} km
           </Badge>
         </Group>
@@ -315,8 +258,7 @@ export default function HudOverlay({
           mt={12}
           pt={8}
           style={{
-            borderTop:
-              '1px solid rgba(255,255,255,0.1)',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
           }}
         >
           <Text
@@ -329,51 +271,30 @@ export default function HudOverlay({
             Orbital shells
           </Text>
 
-          <Group
-            gap={6}
-            justify="center"
-          >
+          <Group gap={6} justify="center">
             <Button
               size="xs"
-              variant={
-                shellsVisible.leo
-                  ? 'filled'
-                  : 'light'
-              }
+              variant={shellsVisible.leo ? 'filled' : 'light'}
               color="green"
-              onClick={() =>
-                toggleShell('leo')
-              }
+              onClick={() => toggleShell('leo')}
             >
               LEO
             </Button>
 
             <Button
               size="xs"
-              variant={
-                shellsVisible.polar
-                  ? 'filled'
-                  : 'light'
-              }
+              variant={shellsVisible.polar ? 'filled' : 'light'}
               color="orange"
-              onClick={() =>
-                toggleShell('polar')
-              }
+              onClick={() => toggleShell('polar')}
             >
               Polar
             </Button>
 
             <Button
               size="xs"
-              variant={
-                shellsVisible.sso
-                  ? 'filled'
-                  : 'light'
-              }
+              variant={shellsVisible.sso ? 'filled' : 'light'}
               color="blue"
-              onClick={() =>
-                toggleShell('sso')
-              }
+              onClick={() => toggleShell('sso')}
             >
               SSO
             </Button>
@@ -381,36 +302,65 @@ export default function HudOverlay({
         </Stack>
 
         <ViewingSpots
-          spots={
-            VIEWING_SPOTS[
-              mission.launchSite.id
-            ] ?? []
-          }
+          spots={VIEWING_SPOTS[mission.launchSite.id] ?? []}
+        />
+
+        <PageCredits
+          ids={PAGE_CREDITS.missionControl}
+          collapsible
+          mt={12}
         />
       </Paper>
 
-      {/* ============================= */}
-      {/* LAUNCH WINDOWS                 */}
-      {/* ============================= */}
+      {/* Top-right, left of the countdown panel: live feed of the clicked site or ISS */}
+      {liveFeedSite?.liveFeed && (
+        <div
+          className={classes.liveFeed}
+          style={{ right: 12 + topRightWidth + 12 }}
+        >
+          <div className={classes.liveFeedHeader}>
+            <span className={classes.liveDot} />
+            <span className={classes.liveFeedTitle}>
+              {liveFeedSite.liveFeed.title || liveFeedSite.name}
+            </span>
+            <button
+              type="button"
+              className={classes.liveFeedClose}
+              onClick={onCloseLiveFeed}
+              aria-label="Close live feed"
+            >
+              ×
+            </button>
+          </div>
 
+          <iframe
+            key={liveFeedSite.id}
+            className={classes.liveFeedVideo}
+            src={liveFeedSite.liveFeed.embedUrl}
+            title={
+              liveFeedSite.liveFeed.title ||
+              `${liveFeedSite.name} live feed`
+            }
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      )}
+
+      {/* Bottom: launch windows list */}
       <Paper
         className={`${classes.panel} ${classes.bottom}`}
         p="sm"
       >
         <UnstyledButton
-          onClick={() =>
-            setWindowsOpen((o) => !o)
-          }
+          onClick={() => setWindowsOpen((o) => !o)}
           aria-expanded={windowsOpen}
           style={{
             display: 'block',
             width: '100%',
           }}
         >
-          <Group
-            justify="center"
-            gap={6}
-          >
+          <Group justify="center" gap={6}>
             <Text
               size="xs"
               c="dimmed"
@@ -420,13 +370,8 @@ export default function HudOverlay({
               Launch windows
             </Text>
 
-            <Text
-              size="xs"
-              c="dimmed"
-            >
-              {windowsOpen
-                ? '▾'
-                : '▴'}
+            <Text size="xs" c="dimmed">
+              {windowsOpen ? '▾' : '▴'}
             </Text>
           </Group>
         </UnstyledButton>
@@ -436,77 +381,46 @@ export default function HudOverlay({
             gap="xs"
             wrap="nowrap"
             mt={6}
-            className={
-              classes.windowRow
-            }
+            className={classes.windowRow}
           >
             {windows.map((w) => {
-              const wx =
-                WEATHER[w.weather]
+              const wx = WEATHER[w.weather]
 
               return (
                 <Paper
                   key={w.id}
                   component="button"
                   type="button"
-                  onClick={() =>
-                    handleSelect(w.id)
-                  }
-                  className={
-                    classes.windowCard
-                  }
+                  onClick={() => handleSelect(w.id)}
+                  className={classes.windowCard}
                   data-selected={
-                    w.id === selectedId ||
-                    undefined
+                    w.id === selectedId || undefined
                   }
                   p="xs"
                 >
-                  <Stack
-                    gap={2}
-                    align="flex-start"
-                  >
-                    <Text
-                      size="sm"
-                      fw={600}
-                    >
-                      {new Date(
-                        w.opensAt
-                      ).toLocaleString(
-                        [],
-                        {
-                          weekday:
-                            'short',
-                          hour: '2-digit',
-                          minute:
-                            '2-digit',
-                        }
-                      )}
+                  <Stack gap={2} align="flex-start">
+                    <Text size="sm" fw={600}>
+                      {new Date(w.opensAt).toLocaleString([], {
+                        weekday: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </Text>
 
-                    <Text
-                      size="xs"
-                      c="dimmed"
-                    >
+                    <Text size="xs" c="dimmed">
                       {w.durationMin} min
                     </Text>
 
                     <Group>
-                      <Badge
-                        size="xs"
-                        color={
-                          wx.color
-                        }
-                      >
-                        {wx.label}
+                      <Badge size="xs" color={wx?.color ?? 'gray'}>
+                        {wx?.label ?? w.weather}
                       </Badge>
 
                       <Button
                         size="xs"
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleSimulate(
-                            w.id
-                          )
+                          handleSimulate(w.id)
                         }}
                       >
                         Simulate

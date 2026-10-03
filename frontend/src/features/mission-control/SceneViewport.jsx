@@ -1,17 +1,15 @@
-
 import { useEffect, useRef, useState } from 'react'
 import classes from './MissionControl.module.css'
 import Globe from 'globe.gl'
 import * as THREE from 'three'
 import moonSurface from '../../assets/moonSurface.jpg'
 import sunSurface from '../../assets/sunSurface.jpg'
-import { LAUNCH_SITES } from './launchConfig.js'
+import { ISS, LAUNCH_SITES } from './launchConfig.js'
 import {
   ASCENT_DURATION_MS,
   ASCENT_RATE,
   DEFAULT_TIME_SCALE,
 } from './simulationConfig.js'
-
 const EARTH_R = 6371
 const ALT_SCALE = 1
 const altFrac = km => (km / EARTH_R) * ALT_SCALE
@@ -30,67 +28,94 @@ const orbitPeriodSec = (altKm) =>
  * This is deliberately NOT an orbital-mechanics calculation.
  *
  * Instead, it gives the landing marker a plausible-looking amount of
- * downrange travel based on altitude:
- *
- *   200 km  -> ~20 degrees
- *   400 km  -> ~30 degrees
- *   700 km  -> ~40 degrees
- *   1000 km -> ~50 degrees
- *
- * The exact values are visual approximations rather than physical predictions.
+ * downrange travel based on altitude.
  */
 function simulatedDescent(altKm) {
   const clampedAltitude = Math.max(0, altKm)
-
-  // Approximate downrange travel in degrees.
-  // sqrt() makes the distance increase more gently at high altitude.
-  const travelAngleDeg =
-    15 + 0.95 * Math.sqrt(clampedAltitude)
-
-  const travelAngle =
-    (travelAngleDeg * Math.PI) / 180
-
-  // Approximate descent duration.
-  // 700 km -> roughly 12 minutes.
-  const descentSec =
-    420 + clampedAltitude * 0.45
-
-  return {
-    travelAngle,
-    descentSec,
-  }
+  const travelAngleDeg = 15 + 0.95 * Math.sqrt(clampedAltitude)
+  const travelAngle = (travelAngleDeg * Math.PI) / 180
+  const descentSec = 420 + clampedAltitude * 0.45
+  return { travelAngle, descentSec }
 }
 
-// orbitPosition: lat / lng / alt of a point on the orbit at angle `theta`.
-// theta = 0 is where the orbit crosses the reference longitude.
-function orbitPosition({
-  altKm,
-  inclinationDeg,
-  raanDeg = 0,
-  theta,
-}) {
+const DEBRIS_RADIUS_KM = 10
+
+/* ── ISS: live position + ground track from wheretheiss.at ── */
+const ISS_API = `https://api.wheretheiss.at/v1/satellites/${ISS.noradId}`
+const ISS_POSITION_EVERY_MS = 15000
+const ISS_TRACK_EVERY_MS = 5 * 60 * 1000
+
+async function fetchIssPosition() {
+  const res = await fetch(ISS_API)
+  if (!res.ok) throw new Error(`ISS position ${res.status}`)
+  return res.json()
+}
+
+async function fetchIssTrack() {
+  const now = Math.floor(Date.now() / 1000)
+  const stamps = Array.from({ length: 20 }, (_, k) => now + (k - 10) * 300)
+  const get = async (ts) => {
+    const res = await fetch(`${ISS_API}/positions?timestamps=${ts.join(',')}&units=kilometers`)
+    if (!res.ok) throw new Error(`ISS track ${res.status}`)
+    return res.json()
+  }
+  const first = await get(stamps.slice(0, 10))
+  await new Promise((r) => setTimeout(r, 1100))
+  const second = await get(stamps.slice(10))
+  return [...first, ...second].map((p) => ({
+    lat: p.latitude,
+    lng: p.longitude,
+    alt: altFrac(p.altitude),
+  }))
+}
+
+function makeIssObject() {
+  const group = new THREE.Group()
+  group.add(new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), new THREE.MeshBasicMaterial({ color: '#ffffff' })))
+  const panelMat = new THREE.MeshBasicMaterial({ color: '#4fc3f7', side: THREE.DoubleSide })
+  ;[-1, 1].forEach((side) => {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.15, 1.1), panelMat)
+    panel.position.x = side * 2
+    group.add(panel)
+  })
+  return group
+}
+
+function makeStarField(radius, count = 4000) {
+  const positions = new Float32Array(count * 3)
+  const colors = new Float32Array(count * 3)
+  const tints = [[1, 1, 1], [0.75, 0.85, 1], [1, 0.93, 0.8]]
+  for (let n = 0; n < count; n++) {
+    const u = Math.random() * 2 - 1
+    const theta = Math.random() * Math.PI * 2
+    const r = radius * (1 + Math.random() * 0.3)
+    const s = Math.sqrt(1 - u * u)
+    positions.set([r * s * Math.cos(theta), r * u, r * s * Math.sin(theta)], n * 3)
+    const brightness = 0.35 + Math.random() ** 3 * 0.65
+    const tint = tints[Math.floor(Math.random() * tints.length)]
+    colors.set(tint.map((c) => c * brightness), n * 3)
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  const material = new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true, depthWrite: false })
+  return new THREE.Points(geometry, material)
+}
+
+function orbitPosition({ altKm, inclinationDeg, raanDeg = 0, theta }) {
   const i = (inclinationDeg * Math.PI) / 180
   const raan = (raanDeg * Math.PI) / 180
-
   const x = Math.cos(theta)
   const y = Math.sin(theta) * Math.cos(i)
   const z = Math.sin(theta) * Math.sin(i)
-
-  const xr =
-    x * Math.cos(raan) -
-    y * Math.sin(raan)
-
-  const yr =
-    x * Math.sin(raan) +
-    y * Math.cos(raan)
-
+  const xr = x * Math.cos(raan) - y * Math.sin(raan)
+  const yr = x * Math.sin(raan) + y * Math.cos(raan)
   return {
     lat: (Math.asin(z) * 180) / Math.PI,
     lng: (Math.atan2(yr, xr) * 180) / Math.PI,
     alt: altFrac(altKm),
   }
 }
-
 function orbitPoints({
   altKm,
   inclinationDeg,
@@ -171,14 +196,28 @@ function orbitShell(
 
   return group
 }
+// Point of entry used for the debris screening request.
+function getEntry(trajectory, windows, selectedId) {
+  if (!trajectory?.length) return null
+  const last = trajectory[trajectory.length - 1]
+  const win = windows?.find(w => w.id === selectedId) ?? windows?.[0]
+  if (!win) return null
+  const time = new Date(new Date(win.opensAt).getTime() + (last.tSec ?? 0) * 1000)
+  return { lat: last.lat, lon: last.lon, altKm: last.altKm, time }
+}
 
-// Returns { ascent, endTheta }.
-function getAscent(
-  base,
-  targetInclinationDeg,
-  targetAltitudeKm,
-  steps = 80
-) {
+function makePoints(globe, items, { size, color, opacity }) {
+  const arr = new Float32Array(items.length * 3)
+  items.forEach(([lat, lng, altKm], i) => {
+    const { x, y, z } = globe.getCoords(lat, lng, altFrac(altKm))
+    arr.set([x, y, z], i * 3)
+  })
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(arr, 3))
+  const material = new THREE.PointsMaterial({ size, color, opacity, transparent: true, sizeAttenuation: true, depthWrite: false })
+  return new THREE.Points(geometry, material)
+}
+function getAscent(base, targetInclinationDeg, targetAltitudeKm, steps = 80) {
   if (!base) {
     return {
       ascent: [],
@@ -415,13 +454,16 @@ function getAscent(
 
 export default function SceneViewport({
   mission,
-  shellsVisible = {
-    leo: false,
-    polar: false,
-    sso: false,
-  },
+  windows,
+  selectedId,
+  onSelect,
+  trajectory,
+  shellsVisible = { leo: false, polar: false, sso: false },
+  showDebris = true,
   draftParams,
   onTargetBaseChange,
+  onLaunchSiteClick,
+  onIssClick,
   simulation,
   timeScale = DEFAULT_TIME_SCALE,
 }) {
@@ -429,7 +471,51 @@ export default function SceneViewport({
   const globeRef = useRef(null)
   const globeInstance = useRef(null)
   const shellMeshes = useRef({})
+  const lastDrawRef = useRef('')
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [targetBase, setTargetBase] = useState(null)
+  const [debris, setDebris] = useState(null)
 
+  const onLaunchSiteClickRef = useRef(onLaunchSiteClick)
+  onLaunchSiteClickRef.current = onLaunchSiteClick
+  const onIssClickRef = useRef(onIssClick)
+  onIssClickRef.current = onIssClick
+
+  const missionLayers = useRef({ paths: [], objects: [] })
+  const issData = useRef({ position: null, track: [] })
+
+  const applyLayers = () => {
+    const globe = globeInstance.current
+    if (!globe) return
+    const { position, track } = issData.current
+    const issPaths = track.length > 1 ? [
+      {
+        name: 'ISS orbit (past)',
+        pts: position ? [...track.slice(0, 11), { lat: position.latitude, lng: position.longitude, alt: altFrac(position.altitude) }] : track.slice(0, 11),
+        color: ['rgba(0, 200, 255, 0.05)', 'rgba(0, 200, 255, 0.9)'],
+        stroke: 1.4,
+      },
+      {
+        name: 'ISS orbit (ahead)',
+        pts: position ? [{ lat: position.latitude, lng: position.longitude, alt: altFrac(position.altitude) }, ...track.slice(10)] : track.slice(10),
+        color: ['#7ff3ff', 'rgba(127, 243, 255, 0.35)'],
+        stroke: 1.8,
+        dashLength: 0.04,
+        dashGap: 0.02,
+        dashAnimateTime: 12000,
+      },
+    ] : []
+    const issObjects = position ? [{
+      id: ISS.id,
+      type: 'iss',
+      name: `${ISS.name} · ${Math.round(position.altitude)} km up · ${Math.round(position.velocity).toLocaleString()} km/h (click for live video)`,
+      lat: position.latitude,
+      lng: position.longitude,
+      alt: altFrac(position.altitude),
+    }] : []
+    globe.pathsData([...missionLayers.current.paths, ...issPaths])
+    globe.objectsData([...missionLayers.current.objects, ...issObjects])
+  }
   const flightRef = useRef({
     ascent: [],
     endTheta: 0,
@@ -439,28 +525,15 @@ export default function SceneViewport({
 
   const shellsVisibleRef =
     useRef(shellsVisible)
-
-  const [size, setSize] = useState({
-    width: 0,
-    height: 0,
-  })
-
-  const timeScaleRef =
-    useRef(timeScale)
-
+  const timeScaleRef = useRef(timeScale)
   useEffect(() => {
-    timeScaleRef.current =
-      timeScale
-  })
+    timeScaleRef.current = timeScale
+  }, [timeScale])
 
-  const onTargetBaseChangeRef =
-    useRef(onTargetBaseChange)
-
+  const onTargetBaseChangeRef = useRef(onTargetBaseChange)
   useEffect(() => {
-    onTargetBaseChangeRef.current =
-      onTargetBaseChange
-  })
-
+    onTargetBaseChangeRef.current = onTargetBaseChange
+  }, [onTargetBaseChange])
   const siteId =
     draftParams?.siteId ??
     mission?.launchSite?.id ??
@@ -693,6 +766,16 @@ export default function SceneViewport({
     globe.scene().add(sun)
     globe.scene().add(moon)
 
+    // Star field around everything (Sun sits at 18 Earth radii, stars start at 30)
+    const stars = makeStarField(earthRadius * 30)
+    globe.scene().add(stars)
+    // Make sure the camera can see that far
+    const camera = globe.camera()
+    if (camera.far < earthRadius * 45) {
+      camera.far = earthRadius * 45
+      camera.updateProjectionMatrix()
+    }
+
     shellMeshes.current = {
       leo: orbitShell(globe, {
         altMinKm: 160,
@@ -831,174 +914,125 @@ export default function SceneViewport({
     }
 
     const orbits = []
-
-    if (
-      targetAltitude > 0 &&
-      targetInclination > 0
-    ) {
+    if (targetAltitude > 0 && targetInclination > 0) {
       orbits.push({
-        pts: orbitPoints({
-          altKm: targetAltitude,
-          inclinationDeg:
-            targetInclination,
-          raanDeg: 0,
-        }),
-
+        pts: orbitPoints({ altKm: targetAltitude, inclinationDeg: targetInclination, raanDeg: 0 }),
         color: 'red',
         stroke: 1,
       })
     }
 
     const paths = [
-      {
-        name: 'Ascent Path',
-        pts: ascent,
-        color: 'red',
-        stroke: 2,
-      },
+      { name: 'Ascent Path', pts: ascent, color: 'red', stroke: 2 },
       ...orbits,
     ]
 
-    globe
-      .pathsData(paths)
+    globe.pointsData([])
       .pathPoints(d => d.pts)
       .pathPointLat(p => p.lat)
       .pathPointLng(p => p.lng)
       .pathPointAlt(p => p.alt)
       .pathColor(d => d.color)
       .pathStroke(d => d.stroke)
+      .pathDashLength(d => d.dashLength ?? 1)
+      .pathDashGap(d => d.dashGap ?? 0)
+      .pathDashAnimateTime(d => d.dashAnimateTime ?? 0)
+      .pathTransitionDuration(0)
       .pathResolution(1)
 
+    const activeTargetBase =
+      (draftParams?.siteId && LAUNCH_SITES.find((s) => s.id === draftParams.siteId)) ||
+      targetBase ||
+      mission?.launchSite ||
+      LAUNCH_SITES[0]
+
     const markers = []
-
-    LAUNCH_SITES.forEach(
-      launchSite => {
-        const isActive =
-          launchSite.id ===
-          activeTargetBase.id
-
+    LAUNCH_SITES.forEach((launchSite) => {
+      const isActive = launchSite.id === activeTargetBase.id
+      markers.push({
+        id: launchSite.id,
+        type: 'launchsite-interactive',
+        name: launchSite.name,
+        lat: launchSite.lat,
+        lng: launchSite.lon,
+        alt: 0,
+        color: isActive ? 'yellow' : 'white',
+      })
+      if (isActive) {
         markers.push({
           id: launchSite.id,
-          type:
-            'launchsite-interactive',
+          type: 'launchsite-selected',
           name: launchSite.name,
           lat: launchSite.lat,
           lng: launchSite.lon,
           alt: 0,
-          color: isActive
-            ? 'yellow'
-            : 'white',
+          color: 'black',
         })
-
-        if (isActive) {
-          markers.push({
-            id: launchSite.id,
-            type:
-              'launchsite-selected',
-            name: launchSite.name,
-            lat: launchSite.lat,
-            lng: launchSite.lon,
-            alt: 0,
-            color: 'black',
-          })
-        }
       }
-    )
-
-    const last =
-      ascent[ascent.length - 1]
-
-    markers.push({
-      id: 'ascent-target',
-      type: 'target',
-      lat: last.lat,
-      lng: last.lng,
-      alt: last.alt,
-      color: 'yellow',
     })
+
+    const last = ascent[ascent.length - 1]
+    markers.push({ id: 'ascent-target', type: 'target', lat: last.lat, lng: last.lng, alt: last.alt, color: 'yellow' })
 
     const intersectionPoint = {
       id: 'intersection-point',
       type: 'intersection',
-      name:
-        last.lat.toFixed(2) +
-        '°, lon: ' +
-        last.lng.toFixed(2) +
-        '°, alt: ' +
-        targetAltitude +
-        ' km',
-
+      name: `${last.lat.toFixed(2)}°, lon: ${last.lng.toFixed(2)}°, alt: ${targetAltitude} km`,
       lat: last.lat,
       lng: last.lng,
       alt: last.alt,
       color: '#2fe36b',
     }
 
-    globe
-      .pointsData(markers)
+    globe.pointsData(markers)
       .pointLat(d => d.lat)
       .pointLng(d => d.lng)
       .pointAltitude(d => d.alt)
       .pointLabel(d => d.name)
-      .pointRadius(d =>
-        d.type ===
-        'launchsite-interactive'
-          ? 1.5
-          : d.type ===
-            'launchsite-selected'
-            ? 1.0
-            : 0.5
-      )
+      .pointRadius(d => d.type === 'launchsite-interactive' ? 1.5 : d.type === 'launchsite-selected' ? 1.0 : 0.5)
       .pointColor(d => d.color)
-      .onPointClick(
-        (point, event, coords) => {
-          if (
-            !coords ||
-            point?.type !==
-              'launchsite-interactive'
-          ) {
-            return
-          }
-
-          const clickedSite =
-            LAUNCH_SITES.find(
-              site =>
-                site.id === point.id
-            )
-
-          if (!clickedSite) return
-
-          onTargetBaseChangeRef.current?.(
-            clickedSite
-          )
-        }
-      )
-      .objectsData([
-        intersectionPoint,
-      ])
+      .onPointClick((point, event, coords) => {
+        if (!coords || !point?.type?.startsWith('launchsite')) return
+        const clickedSite = LAUNCH_SITES.find(site => site.id === point.id)
+        if (!clickedSite) return
+        setTargetBase(clickedSite)
+        onTargetBaseChangeRef.current?.(clickedSite)
+        onLaunchSiteClickRef.current?.(clickedSite)
+        globe.pointOfView({ lat: clickedSite.lat, lng: clickedSite.lon }, 2000)
+      })
+      .onPointHover((point) => {
+        if (globeRef.current) globeRef.current.style.cursor = point?.type?.startsWith('launchsite') ? 'pointer' : ''
+      })
       .objectLat(d => d.lat)
       .objectLng(d => d.lng)
       .objectAltitude(d => d.alt)
       .objectLabel(d => d.name)
-      .objectThreeObject(
-        d =>
-          new THREE.Mesh(
-            new THREE.SphereGeometry(
-              1,
-              16,
-              16
-            ),
-            new THREE.MeshBasicMaterial({
-              color: d.color,
-            })
-          )
+      .objectThreeObject(d =>
+        new THREE.Mesh(
+          new THREE.SphereGeometry(1, 16, 16),
+          new THREE.MeshBasicMaterial({ color: d.color })
+        )
       )
-  }, [
-    siteId,
-    targetInclination,
-    targetAltitude,
-  ])
 
+    missionLayers.current = { paths, objects: [intersectionPoint] }
+    globe
+      .objectThreeObject(d =>
+        d.type === 'iss'
+          ? makeIssObject()
+          : new THREE.Mesh(
+              new THREE.SphereGeometry(1, 16, 16),
+              new THREE.MeshBasicMaterial({ color: d.color })
+            )
+      )
+      .onObjectClick((obj) => {
+        if (obj?.type === 'iss') onIssClickRef.current?.()
+      })
+      .onObjectHover((obj) => {
+        if (globeRef.current) globeRef.current.style.cursor = obj?.type === 'iss' ? 'pointer' : ''
+      })
+
+    applyLayers()
+  }, [siteId, targetInclination, targetAltitude, draftParams?.siteId, targetBase, mission?.launchSite])
   // Camera
   useEffect(() => {
     const globe =
@@ -1496,6 +1530,90 @@ export default function SceneViewport({
   }, [simulation])
 
 
+  // ISS: poll the live position, refresh the orbit track every few minutes
+  useEffect(() => {
+    let cancelled = false
+    const updatePosition = () =>
+      fetchIssPosition()
+        .then((position) => {
+          if (cancelled) return
+          issData.current.position = position
+          applyLayers()
+        })
+        .catch((e) => console.warn('ISS position unavailable:', e.message))
+    const updateTrack = () =>
+      fetchIssTrack()
+        .then((track) => {
+          if (cancelled) return
+          issData.current.track = track
+          applyLayers()
+        })
+        .catch((e) => console.warn('ISS track unavailable:', e.message))
+
+    updatePosition()
+    const trackDelay = setTimeout(updateTrack, 1200) // spaced out for the API's rate limit
+    const positionTimer = setInterval(updatePosition, ISS_POSITION_EVERY_MS)
+    const trackTimer = setInterval(updateTrack, ISS_TRACK_EVERY_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(trackDelay)
+      clearInterval(positionTimer)
+      clearInterval(trackTimer)
+    }
+  }, [])
+
+  // NEW: ask the backend what debris is near the entry point.
+  useEffect(() => {
+    const entry = getEntry(trajectory, windows, selectedId)
+    if (!entry) return
+
+    const ctrl = new AbortController()
+    const qs = new URLSearchParams({
+      lat: entry.lat,
+      lon: entry.lon,
+      alt_km: entry.altKm,
+      time: entry.time.toISOString(),
+      radius_km: DEBRIS_RADIUS_KM,
+    })
+
+    fetch(`/api/debris?${qs}`, { signal: ctrl.signal })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`debris request failed: ${r.status}`))))
+      .then(data => {
+        setDebris(data)
+        console.log('debris check:', data.clear ? 'CLEAR' : `${data.nearby.length} nearby`, data.nearby)
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') console.warn(err)
+      })
+
+    return () => ctrl.abort()
+  }, [trajectory, windows, selectedId])
+
+  // NEW: draw the debris as tiny points (grey-red cloud, plus bright red for anything inside the radius).
+  useEffect(() => {
+    const globe = globeInstance.current
+    if (!globe || !debris || !showDebris) return
+    const scene = globe.scene()
+
+    const group = new THREE.Group()
+    const cloud = debris.cloud.filter(([, , altKm]) => altKm > 100) // drop objects that look already decayed
+    group.add(makePoints(globe, cloud, { size: 0.35, color: '#ff8a80', opacity: 0.7 }))
+
+    if (debris.nearby.length) {
+      const near = debris.nearby.map(d => [d.lat, d.lon, d.alt_km])
+      group.add(makePoints(globe, near, { size: 1.5, color: '#ff1744', opacity: 1 }))
+    }
+
+    scene.add(group)
+    return () => {
+      scene.remove(group)
+      group.traverse(o => {
+        o.geometry?.dispose()
+        o.material?.dispose()
+      })
+    }
+  }, [debris, showDebris])
+
   return (
     <div
       ref={containerRef}
@@ -1511,4 +1629,3 @@ export default function SceneViewport({
     </div>
   )
 }
-
