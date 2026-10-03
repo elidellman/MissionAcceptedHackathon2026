@@ -6,7 +6,11 @@ import * as THREE from 'three'
 import moonSurface from '../../assets/moonSurface.jpg'
 import sunSurface from '../../assets/sunSurface.jpg'
 import { LAUNCH_SITES } from './launchConfig.js'
-import { ASCENT_REAL_MS, DEFAULT_TIME_SCALE } from './simulationConfig.js'
+import {
+  ASCENT_DURATION_MS,
+  ASCENT_RATE,
+  DEFAULT_TIME_SCALE,
+} from './simulationConfig.js'
 
 const EARTH_R = 6371
 const ALT_SCALE = 1
@@ -1223,12 +1227,7 @@ export default function SceneViewport({
       // ======================================
 
       if (!ascentDone) {
-        const progress =
-          Math.min(
-            1,
-            simMs /
-              ASCENT_REAL_MS
-          )
+        const progress = Math.min(1,(simMs / ASCENT_DURATION_MS) * ASCENT_RATE)
 
         const f =
           progress *
@@ -1343,13 +1342,11 @@ export default function SceneViewport({
         satellite &&
         ascentDone
       ) {
-        const orbitTime =
-          Math.max(
-            0,
-            simMs -
-              ASCENT_REAL_MS
-          ) / 1000
+          const ascentSimMs =
+          ASCENT_DURATION_MS / ASCENT_RATE
 
+          const orbitTime =
+          Math.max(0, simMs - ascentSimMs) / 1000
         const theta =
           flight.endTheta +
           omega * orbitTime
