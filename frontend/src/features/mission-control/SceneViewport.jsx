@@ -2547,7 +2547,7 @@ export default function SceneViewport({
     }))
     const API_URL = import.meta.env.VITE_API_URL || ''
 
-    const url = `${API_URL}/api/debris?${params}`
+    const url = `${API_URL}/api/debris`
     const ctrl = new AbortController()
     setCollision({ status: 'checking' })
     fetch(url, {
