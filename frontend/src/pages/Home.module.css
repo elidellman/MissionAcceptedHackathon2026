@@ -12,7 +12,7 @@
 .heroBg {
   position: absolute;
   inset: -2%;
-  background: url('../assets/space/home-earth-satellite.jpg') center right / cover no-repeat;
+  background: url('../assets/space/coding.webp') center right / cover no-repeat;
   opacity: 0.55;
   z-index: -2;
   animation: drift 40s ease-in-out infinite alternate;

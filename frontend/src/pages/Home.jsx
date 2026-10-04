@@ -36,16 +36,15 @@ export default function Home() {
         <Container size="lg" w="100%" py={{ base: 48, sm: 96 }}>
           <Stack gap="xl" align="flex-start" maw={680}>
             <Badge variant="light" size="lg" className={classes.reveal} style={delay(0)}>
-              Mission Accepted 2026 · Challenge 2
+              MDA Space Mission Accepted 2026 · Challenge 2 (Thank You Ben)
             </Badge>
 
             <Title order={1} fz={{ base: 40, sm: 64 }} lh={1.05} className={classes.reveal} style={delay(1)}>
-              Find the right moment to launch.
+              Calculate the right moment to launch.
             </Title>
 
             <Text size="lg" c="gray.4" className={classes.reveal} style={delay(2)}>
-              Mission Control matches a rocket's target orbit with Earth's rotation, launch-site location and
-              weather to show when a launch can happen and what the path to orbit looks like.
+              Mission Control matches a rocket's target orbit with Earth's rotation, launch-site location, space debris, weather conditions, and launch conflicts to show when a launch can happen and what the path to orbit looks like.
             </Text>
 
             <Group className={classes.reveal} style={delay(3)}>
