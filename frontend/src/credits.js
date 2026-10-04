@@ -1,8 +1,6 @@
 /**
  * Sources & credits for third-party content, shown on each page via <PageCredits ids={[...]} />.
- *
- * Anything marked '[add source]' is an image whose origin we haven't recorded yet:
- * replace `by` (and add `url`) before presenting, or swap the image for one you can credit.
+ * Every entry needs a real source: add an image here only once you know where it came from.
  */
 export const CREDITS = {
   // ── Mission Control ──────────────────────────────────────────────
@@ -12,8 +10,6 @@ export const CREDITS = {
     url: 'https://visibleearth.nasa.gov/images/74518',
     license: 'public domain',
   },
-  moonTexture: { what: 'Moon surface texture', by: '[add source]' },
-  sunTexture: { what: 'Sun surface texture', by: '[add source]' },
   capeStream: {
     what: 'Cape Canaveral live feed',
     by: 'Spaceflight Now, "Launch Pad Live" (YouTube)',
@@ -37,13 +33,12 @@ export const CREDITS = {
     by: 'Where the ISS at? (wheretheiss.at API)',
     url: 'https://wheretheiss.at',
   },
-  viewingSpotPhotos: { what: 'Viewing spot photos', by: '[add source]' },
   googleMaps: { what: 'Viewing spot directions', by: 'Google Maps', url: 'https://www.google.com/maps' },
+  weatherForecast: { what: 'Weather forecast for GO / CAUTION / NO-GO ratings', by: 'Open-Meteo', url: 'https://open-meteo.com', license: 'CC BY 4.0' },
+  scheduledLaunches: { what: 'Scheduled launches (clash check)', by: 'The Space Devs, Launch Library 2', url: 'https://thespacedevs.com' },
+  debrisCatalogue: { what: 'Space debris orbital data', by: 'CelesTrak', url: 'https://celestrak.org' },
 
   // ── Home / Presentation backgrounds ──────────────────────────────
-  homeHero: { what: 'Home page background image', by: '[add source]' },
-  presentationStars: { what: 'Presentation star background', by: '[add source]' },
-  presentationEarth: { what: 'Presentation Earth background', by: '[add source]' },
   radarsat: { what: 'Satellite illustration: RADARSAT Constellation Mission', by: 'MDA' },
 
   // ── Launch Info ──────────────────────────────────────────────────
@@ -60,23 +55,28 @@ export const CREDITS = {
   three: { what: 'three.js', by: 'three.js authors', url: 'https://threejs.org', license: 'MIT' },
   globeGl: { what: 'globe.gl', by: 'Vasco Asturiano', url: 'https://globe.gl', license: 'MIT' },
   flask: { what: 'Flask', by: 'Pallets', url: 'https://flask.palletsprojects.com', license: 'BSD-3-Clause' },
+  sgp4: { what: 'sgp4 (orbit propagation)', by: 'Brandon Rhodes', url: 'https://pypi.org/project/sgp4/', license: 'MIT' },
+  numpy: { what: 'NumPy', by: 'NumPy developers', url: 'https://numpy.org', license: 'BSD-3-Clause' },
+  pandas: { what: 'pandas', by: 'pandas development team', url: 'https://pandas.pydata.org', license: 'BSD-3-Clause' },
+  requests: { what: 'Requests', by: 'Python Software Foundation', url: 'https://requests.readthedocs.io', license: 'Apache-2.0' },
+  openMeteoRequests: { what: 'openmeteo-requests', by: 'Open-Meteo', url: 'https://pypi.org/project/openmeteo-requests/', license: 'MIT' },
 }
 
 /** Credit ids used on each page (About shows all of them). */
 export const PAGE_CREDITS = {
-  home: ['homeHero'],
+  home: [],
   missionControl: [
     'earthTexture',
-    'moonTexture',
-    'sunTexture',
     'capeStream',
     'novaScotiaWeather',
     'issStream',
     'issPosition',
-    'viewingSpotPhotos',
     'googleMaps',
+    'weatherForecast',
+    'scheduledLaunches',
+    'debrisCatalogue',
   ],
   info: ['challengeBrief'],
-  presentation: ['radarsat', 'presentationStars', 'presentationEarth'],
-  software: ['react', 'vite', 'mantine', 'reactRouter', 'three', 'globeGl', 'flask'],
+  presentation: ['radarsat'],
+  software: ['react', 'vite', 'mantine', 'reactRouter', 'three', 'globeGl', 'flask', 'sgp4', 'numpy', 'pandas', 'requests', 'openMeteoRequests'],
 }

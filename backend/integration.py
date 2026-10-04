@@ -1,6 +1,6 @@
-from Calculations import calculate_launch_windows
+from backend.Calculations import calculate_launch_windows
 
-from flaskr.weather.weatherApi import (
+from backend.flaskr.weather.weatherApi import (
     check_orbital_windows
 )
 
@@ -11,7 +11,8 @@ from flaskr.weather.weatherApi import (
 
 ORBITAL_TO_WEATHER_SITE = {
     "CapeCanaveral": "cape-canaveral",
-    "NovaScotia": "nova-scotia"
+    "NovaScotia": "nova-scotia",
+    "Nova-Scotia": "nova-scotia",  # the name lib_Calculations uses
 }
 
 
@@ -40,6 +41,10 @@ def generate_launch_windows_with_weather(
     )
 
     orbital_windows = orbital_result["windows"]
+
+    # Without a RAAN the windows are hourly slots with no "peak": rate them at their start
+    for w in orbital_windows:
+        w.setdefault("peak", w["start"])
 
     # -----------------------------------------------------
     # 2. Convert orbital launch site to weather site

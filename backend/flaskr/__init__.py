@@ -112,7 +112,7 @@ def create_app(test_config=None):
 
         data = request.get_json()
 
-        from integration import generate_launch_windows_with_weather
+        from backend.integration import generate_launch_windows_with_weather
 
         result = generate_launch_windows_with_weather(
             launch_site=data["launch_site"],

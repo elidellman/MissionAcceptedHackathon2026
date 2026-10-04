@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Button, Card, Code, Container, Stack, Text, Title } from '@mantine/core'
+import { Anchor, Button, Card, Code, Container, Stack, Text, Title } from '@mantine/core'
+import { Link } from 'react-router-dom'
+import { ROUTES } from '../routes.js'
 import PageCredits from '../components/PageCredits.jsx'
 import { PAGE_CREDITS } from '../credits.js'
 
@@ -32,7 +34,13 @@ export default function About() {
           and the general public.
         </Text>
         <Text>
-          Built with React, Vite and Mantine on the frontend, and Flask on the backend.
+          The frontend is built with React, Vite and Mantine, with a 3D globe from three.js and globe.gl. The backend is a
+          Flask API in Python: it calculates the launch windows, removes clashes with scheduled launches, rates the
+          weather against launch rules and an early warning, and screens the ascent for space debris using SGP4.
+        </Text>
+        <Text>
+          New here? The <Anchor component={Link} to={ROUTES.guide.path}>Guide</Anchor> walks through every feature,
+          including the less obvious ones.
         </Text>
         <Text c="dimmed" size="sm">
           Challenge presented by MDA Space, ShiftKey Labs and the Canadian Space Agency.

@@ -7,19 +7,34 @@ import { PAGE_CREDITS } from '../credits.js'
 
 const FEATURES = [
   {
-    icon: '🌍',
-    title: '3D Earth view',
-    body: 'See the launch site, ascent trajectory and target orbit around a live 3D globe.',
-  },
-  {
     icon: '⏱️',
-    title: 'Launch windows',
-    body: 'Compatible launch times for LEO, Polar and Sun-Synchronous orbits, with a countdown to the next one.',
+    title: 'Real launch windows',
+    body: 'Calculated from the launch site, the target orbit (LEO, Polar or SSO) and Earth’s rotation, avoiding launches already scheduled at the site.',
   },
   {
     icon: '🌦️',
-    title: 'Weather impact',
-    body: 'A simple Go / Caution / No-Go indicator for each window based on weather at the pad.',
+    title: 'Two-layer weather check',
+    body: 'Every window is rated GO, CAUTION or NO-GO from a live forecast at the pad: strict launch rules (wind, gusts, rain, visibility, winds aloft, storms, low cloud) plus an early warning for marginal conditions.',
+  },
+  {
+    icon: '🚀',
+    title: 'Launch simulation',
+    body: 'Watch the rocket climb to orbit and release its satellite, with a camera that follows the flight.',
+  },
+  {
+    icon: '🛰️',
+    title: 'Space debris check',
+    body: 'Tracked debris is moved to launch time and checked against the ascent path, flagging anything within 10 km.',
+  },
+  {
+    icon: '🌍',
+    title: '3D globe',
+    body: 'Miniature launch sites, the ascent path and target orbit, orbital shells, the Sun, the Moon and the live ISS.',
+  },
+  {
+    icon: '📡',
+    title: 'Live feeds',
+    body: 'A live pad camera at Cape Canaveral, live weather over Spaceport Nova Scotia and NASA’s video from the ISS.',
   },
 ]
 
@@ -51,7 +66,10 @@ export default function Home() {
               <Button component={Link} to={ROUTES.missionControl.path} size="md">
                 Open Mission Control
               </Button>
-              <Button component={Link} to={ROUTES.info.path} size="md" variant="default">
+              <Button component={Link} to={ROUTES.guide.path} size="md" variant="default">
+                Read the guide
+              </Button>
+              <Button component={Link} to={ROUTES.info.path} size="md" variant="subtle">
                 How launch windows work
               </Button>
             </Group>

@@ -1,14 +1,21 @@
 """
-Weather rating for each launch window, from the free Open-Meteo forecast API.
+Weather rating for each launch window, combining two engines on the same Open-Meteo forecast:
 
-Rates every hour of the next 16 days and provides:
-    green  = GO       (calm, dry, no storms)
-    yellow = CAUTION  (gusty, some rain chance or heavy cloud)
-    red    = NO-GO    (strong gusts, likely rain or thunderstorms)
+  1. Launch rules (backend/flaskr/weather/weatherApi.py): hard limits for surface wind,
+     gusts, rain, visibility, winds aloft, thunderstorms and low cloud. Any failure = NO-GO.
+  2. Early warning (this file): softer signs that conditions are marginal, such as rising
+     gusts, a chance of rain, heavy cloud or temperature extremes.
 
-Each rating also includes a description and the forecast values
-used to determine the rating.
+Combined rating per window:
+    red     = NO-GO        a launch rule fails (or severe weather spotted by the early warning)
+    yellow  = CAUTION      every launch rule passes, but the early warning flags something
+    green   = GO           every launch rule passes and nothing is flagged
+    unknown = NO FORECAST  the window is beyond the 16-day forecast
+
+If the launch-rule engine can't run (missing libraries, API down), the early-warning rating
+is used on its own, so the app never breaks.
 """
+import math
 import time
 from datetime import timezone
 
@@ -129,8 +136,8 @@ def _hourly_ratings(lat, lon):
     return ratings
 
 
-def rate_windows(lat, lon, start_times):
-    """Return one rating per start time (timezone-aware datetimes)."""
+def _early_warning(lat, lon, start_times):
+    """Early-warning rating per start time (timezone-aware datetimes)."""
     try:
         ratings = _hourly_ratings(lat, lon)
     except Exception as error:  # network down, API error, bad response…
@@ -159,3 +166,110 @@ def rate_windows(lat, lon, start_times):
         )
         for t in start_times
     ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Launch rules (teammate's engine) + combined rating
+# ─────────────────────────────────────────────────────────────────────────────
+
+_rules_cache = {}  # (lat, lon) -> (fetched_at, {"YYYY-MM-DDTHH:00": {"status", "checks"}})
+
+
+def _rule_text(name, check):
+    """Plain-English reason for a failed launch rule."""
+    v = check.get("value")
+    limit = check.get("limit")
+    return {
+        "surface_wind": f"Surface wind {v} mph (limit {limit})",
+        "wind_gusts": f"Gusts {v} mph (limit {limit})",
+        "rain": f"Rain {v} in/hr (limit {limit})",
+        "visibility": f"Visibility {v} mi (minimum {limit})",
+        "winds_aloft": f"Winds aloft {check.get('maximum_mph')} mph (limit {limit})",
+        "thunderstorm": "Thunderstorm forecast",
+        "cloud_ceiling_proxy": f"Low cloud {v}% (limit {limit}%)",
+    }.get(name, name.replace("_", " "))
+
+
+def _has_data(check):
+    """A check whose forecast value is missing (NaN) is skipped instead of failing."""
+    value = check.get("maximum_mph", check.get("value"))
+    return not (isinstance(value, float) and math.isnan(value))
+
+
+def _launch_rules(lat, lon):
+    """Run the launch-rule engine for every forecast hour. Raises if it can't run."""
+    key = (round(lat, 3), round(lon, 3))
+    cached = _rules_cache.get(key)
+    if cached and time.time() - cached[0] < CACHE_SECONDS:
+        return cached[1]
+
+    # Imported here so a missing library (pandas, openmeteo-requests…) only disables this layer
+    from backend.flaskr.weather import weatherApi
+
+    forecast = weatherApi.get_weather_forecast(lat, lon, days=16)
+    results = {}
+    for _, hour in forecast.iterrows():
+        try:
+            evaluated = weatherApi.evaluate_weather(hour)
+            checks = {name: c for name, c in evaluated["checks"].items() if _has_data(c)}
+        except (ValueError, TypeError):
+            checks = {}  # a blank forecast value this hour: rely on the early warning
+        results[hour["time"].strftime("%Y-%m-%dT%H:00")] = checks
+
+    _rules_cache[key] = (time.time(), results)
+    return results
+
+
+def rate_windows(lat, lon, start_times):
+    """
+    Combined rating per start time: {"rating", "description", ...}.
+    rating is "green" | "yellow" | "red" | "unknown".
+    """
+    early = _early_warning(lat, lon, start_times)
+
+    try:
+        rules = _launch_rules(lat, lon)
+    except Exception as error:
+        print(f"[weather] launch-rule engine unavailable, using early warning only: {error}")
+        return early
+
+    combined = []
+    for t, warning in zip(start_times, early):
+        hour = t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00")
+        checks = rules.get(hour)
+
+        # Beyond the forecast: neither engine has data for this hour
+        if checks is None:
+            combined.append({
+                "rating": "unknown",
+                "description": "No forecast yet: forecasts only cover the next 16 days.",
+            })
+            continue
+
+        failed = [_rule_text(name, c) for name, c in checks.items() if c["status"] == "FAIL"]
+        warned = warning.get("description", "")
+        flagged = warning.get("rating") in ("yellow", "red") and warned not in ("", "Good launch conditions.")
+
+        if failed:
+            rating = "red"
+            description = "Fails launch rules: " + "; ".join(failed) + "."
+            if flagged:
+                description += " Also: " + warned
+        elif warning.get("rating") == "red":
+            rating = "red"
+            description = "Launch rules pass, but severe conditions: " + warned
+        elif warning.get("rating") == "yellow":
+            rating = "yellow"
+            description = "Launch rules pass, but watch: " + warned
+        else:
+            rating = "green"
+            description = "All launch rules pass (wind, gusts, rain, visibility, winds aloft, storms, low cloud)."
+
+        combined.append({
+            **warning,
+            "rating": rating,
+            "description": description,
+            "checks": checks,
+        })
+
+    return combined

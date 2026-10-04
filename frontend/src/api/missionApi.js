@@ -129,6 +129,7 @@ const WEATHER_TEXT = {
   green: 'Weather looks good for launch.',
   yellow: 'Marginal weather: check conditions before launch.',
   red: 'Weather rules out this window.',
+  unknown: 'No forecast yet: forecasts only cover the next 16 days.',
 }
 const toWeather = (weather) =>
   typeof weather === 'string'

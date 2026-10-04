@@ -20,6 +20,7 @@ const WEATHER = {
   green: { color: 'green', label: 'GO' },
   yellow: { color: 'yellow', label: 'CAUTION' },
   red: { color: 'red', label: 'NO-GO' },
+  unknown: { color: 'gray', label: 'NO FORECAST' },
 }
 
 // formatTime: formats a timestamp (ms) as a regular clock time, e.g. 02:35:09 PM

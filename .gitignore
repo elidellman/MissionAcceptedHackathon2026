@@ -27,3 +27,4 @@ __pycache__/
 *.pyc
 
 debris_cache.json
+.cache.sqlite
