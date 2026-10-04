@@ -17,7 +17,8 @@ const QUICK_START = [
 const DATA_SOURCES = [
   ['Launch windows', 'Our Python engine (Flask backend)', 'Calculated from the launch site, orbit and Earth’s rotation'],
   ['Scheduled launches', 'The Space Devs Launch Library', 'Windows that clash with launches already booked at the site are removed'],
-  ['Weather rating', 'Open-Meteo forecast', 'Launch rules decide NO-GO; an early warning adds CAUTION for marginal conditions'],
+  ['Weather: launch rules', 'Open-Meteo forecast (weatherApi.py)', 'Hard limits on wind, gusts, rain, visibility, winds aloft, storms and low cloud; any failure = NO-GO'],
+  ['Weather: early warning', 'Open-Meteo forecast (weather.py)', 'Flags marginal gusts, rain chance, heavy cloud and temperature extremes as CAUTION; also the backup if the launch-rule engine is down'],
   ['Space debris', 'CelesTrak catalogue + SGP4', 'Tracked debris moved to launch time and checked against the ascent'],
   ['ISS position', 'wheretheiss.at', 'Live position every 15 s, orbit track every 5 min'],
   ['Live video / map', 'YouTube (Spaceflight Now, NASA) and Windy.com', 'Official embeds'],
@@ -97,7 +98,7 @@ export default function Guide() {
                     <Badge color="red" size="sm">NO-GO</Badge> <Badge color="gray" size="sm">NO FORECAST</Badge>
                   </List.Item>
                   <List.Item>
-                    The weather is checked in two layers. <b>Launch rules</b> are hard limits on surface wind (30 mph),
+                    The weather is checked by <b>two engines</b> reading the same live forecast. <b>Launch rules</b> are hard limits on surface wind (30 mph),
                     gusts (40 mph), rain (1 in/hr), visibility (2 miles), winds aloft (50 mph), thunderstorms and low cloud
                     (50%); breaking any rule makes the window NO-GO. An <b>early warning</b> flags marginal conditions
                     (rising gusts, a chance of rain, heavy cloud, temperature extremes) as CAUTION.

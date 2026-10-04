@@ -60,9 +60,10 @@ const SLIDES = [
         body: 'Upcoming launches at the same site come from The Space Devs Launch Library; any window that overlaps one is removed.',
       },
       {
-        title: '3. Rate the weather',
+        title: '3. Rate the weather: two checks',
         body:
-          'A live 16-day Open-Meteo forecast for the pad rates every window: wind gusts, rain chance, cloud cover and thunderstorms become GO, CAUTION or NO-GO.',
+          'Two weather engines read a live 16-day Open-Meteo forecast for the pad. Launch rules (surface wind, gusts, rain, visibility, winds aloft, ' +
+          'storms, low cloud) decide NO-GO; an early warning flags marginal weather as CAUTION. Beyond 16 days: no forecast.',
       },
       {
         title: '4. Screen for space debris',

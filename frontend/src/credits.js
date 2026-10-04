@@ -34,7 +34,7 @@ export const CREDITS = {
     url: 'https://wheretheiss.at',
   },
   googleMaps: { what: 'Viewing spot directions', by: 'Google Maps', url: 'https://www.google.com/maps' },
-  weatherForecast: { what: 'Weather forecast for GO / CAUTION / NO-GO ratings', by: 'Open-Meteo', url: 'https://open-meteo.com', license: 'CC BY 4.0' },
+  weatherForecast: { what: 'Weather forecasts for both weather checks (launch rules and early warning)', by: 'Open-Meteo', url: 'https://open-meteo.com', license: 'CC BY 4.0' },
   scheduledLaunches: { what: 'Scheduled launches (clash check)', by: 'The Space Devs, Launch Library 2', url: 'https://thespacedevs.com' },
   debrisCatalogue: { what: 'Space debris orbital data', by: 'CelesTrak', url: 'https://celestrak.org' },
 

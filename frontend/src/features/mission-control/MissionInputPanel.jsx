@@ -210,7 +210,8 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
             )}
 
             <Text size="xs" c="dimmed">
-              Weather is checked automatically for each window.
+              Weather is checked automatically for each window, against launch rules plus an early warning.
+              Click “Why?” on a window to see the reason.
             </Text>
 
             <Button type="submit" loading={loading} disabled={!valid} fullWidth>
