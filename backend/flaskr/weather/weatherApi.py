@@ -29,7 +29,7 @@ openmeteo = openmeteo_requests.Client(
 # =========================================================
 
 LAUNCH_SITES = {
-    "SpacePort": {
+    "nova-scotia": {
         "name": "Spaceport Nova Scotia",
         "latitude": 45.303559,
         "longitude": -60.982891

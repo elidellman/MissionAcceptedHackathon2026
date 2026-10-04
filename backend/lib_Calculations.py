@@ -36,7 +36,7 @@ LaunchSites = {
         "latitude": 28.5620,
         "longitude": -80.5772
     },
-    "SpacePort": {
+    "Nova-Scotia": {
         "latitude": 45.3031,
         "longitude": -60.9828
     }
