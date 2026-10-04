@@ -2691,7 +2691,7 @@ export default function SceneViewport({
     )
 
     fetch(
-      `/api/debris?${qs}`,
+      `${API_URL}/api/debris?${qs}`,
       {
         signal:
           ctrl.signal,
