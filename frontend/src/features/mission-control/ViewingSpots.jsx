@@ -10,7 +10,7 @@ export default function ViewingSpots({ spots = [] }) {
 
   return (
     <Stack gap="xs" mt={12} pt={8} style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-      <UnstyledButton onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+      <UnstyledButton onClick={() => setOpen((wasOpen) => !wasOpen)} aria-expanded={open}>
         <Group justify="space-between">
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
             Spots to view the launch

@@ -39,7 +39,7 @@ const FEATURES = [
 ]
 
 // Stagger helper for the entrance animation
-const delay = (i) => ({ animationDelay: `${0.15 + i * 0.12}s` })
+const delay = (order) => ({ animationDelay: `${0.15 + order * 0.12}s` })
 
 export default function Home() {
   return (
@@ -79,15 +79,15 @@ export default function Home() {
 
       <Container size="lg" className={classes.features}>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
-          {FEATURES.map((f, i) => (
-            <Paper key={f.title} p="lg" radius="md" className={`${classes.card} ${classes.reveal}`} style={delay(4 + i)}>
+          {FEATURES.map((feature, index) => (
+            <Paper key={feature.title} p="lg" radius="md" className={`${classes.card} ${classes.reveal}`} style={delay(4 + index)}>
               <Stack gap="xs">
                 <ThemeIcon size={44} radius="md" variant="light" fz={22}>
-                  {f.icon}
+                  {feature.icon}
                 </ThemeIcon>
-                <Text fw={700}>{f.title}</Text>
+                <Text fw={700}>{feature.title}</Text>
                 <Text size="sm" c="dimmed">
-                  {f.body}
+                  {feature.body}
                 </Text>
               </Stack>
             </Paper>

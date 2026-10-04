@@ -50,13 +50,13 @@ export default function Guide() {
         {/* ── Quick start ─────────────────────────────────────────── */}
         <Section title="Quick start">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            {QUICK_START.map((s) => (
-              <Card key={s.n} withBorder padding="lg">
+            {QUICK_START.map((step) => (
+              <Card key={step.n} withBorder padding="lg">
                 <Group gap="sm" align="flex-start" wrap="nowrap">
-                  <ThemeIcon radius="xl" size={32} variant="light">{s.n}</ThemeIcon>
+                  <ThemeIcon radius="xl" size={32} variant="light">{step.n}</ThemeIcon>
                   <Stack gap={2}>
-                    <Text fw={700}>{s.title}</Text>
-                    <Text size="sm" c="dimmed">{s.body}</Text>
+                    <Text fw={700}>{step.title}</Text>
+                    <Text size="sm" c="dimmed">{step.body}</Text>
                   </Stack>
                 </Group>
               </Card>

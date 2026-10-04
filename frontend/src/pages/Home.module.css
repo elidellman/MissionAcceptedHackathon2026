@@ -14,6 +14,7 @@
   inset: -2%;
   background: url('../assets/space/home-earth-satellite.jpg') center right / cover no-repeat;
   opacity: 0.55;
+  filter: blur(4px); /* soft background: raise for more blur, lower for less */
   z-index: -2;
   animation: drift 40s ease-in-out infinite alternate;
 }

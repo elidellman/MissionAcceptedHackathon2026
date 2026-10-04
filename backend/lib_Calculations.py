@@ -111,10 +111,10 @@ def get_plane_intersections(launchSite, inclination, raan):
     latitude = LaunchSites[launchSite]["latitude"]
 
     phi = math.radians(latitude)
-    i = math.radians(inclination)
+    inclination_rad = math.radians(inclination)
     omega = math.radians(raan)
 
-    ratio = -math.tan(phi) / math.tan(i)
+    ratio = -math.tan(phi) / math.tan(inclination_rad)
 
     # No intersection if mathematically impossible
     if abs(ratio) > 1:
@@ -155,13 +155,13 @@ def get_intersection_time(launchSite, intersection, current_time):
     julian_date = current_time.timestamp() / 86400 + 2440587.5
 
     # Calculate Greenwich Mean Sidereal Time
-    T = (julian_date - 2451545.0) / 36525.0
+    julian_centuries = (julian_date - 2451545.0) / 36525.0
 
     gmst = (
         280.46061837
         + 360.98564736629 * (julian_date - 2451545.0)
-        + 0.000387933 * T**2
-        - T**3 / 38710000.0
+        + 0.000387933 * julian_centuries**2
+        - julian_centuries**3 / 38710000.0
     )
 
     # Normalize GMST to 0–360 degrees

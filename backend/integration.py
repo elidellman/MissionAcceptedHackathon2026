@@ -43,8 +43,8 @@ def generate_launch_windows_with_weather(
     orbital_windows = orbital_result["windows"]
 
     # Without a RAAN the windows are hourly slots with no "peak": rate them at their start
-    for w in orbital_windows:
-        w.setdefault("peak", w["start"])
+    for window in orbital_windows:
+        window.setdefault("peak", window["start"])
 
     # -----------------------------------------------------
     # 2. Convert orbital launch site to weather site
@@ -123,18 +123,18 @@ if __name__ == "__main__":
         total = len(windows)
 
         approved = [
-            w for w in windows
-            if w["weather"] == "green"
+            window for window in windows
+            if window["weather"] == "green"
         ]
 
         rejected = [
-            w for w in windows
-            if w["weather"] == "red"
+            window for window in windows
+            if window["weather"] == "red"
         ]
 
         unavailable = [
-            w for w in windows
-            if w["weather"] == "unknown"
+            window for window in windows
+            if window["weather"] == "unknown"
         ]
 
         print()

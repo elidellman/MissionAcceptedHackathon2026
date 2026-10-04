@@ -155,7 +155,7 @@ def _early_warning(lat, lon, start_times):
 
     return [
         ratings.get(
-            t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00"),
+            start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00"),
             {
                 "rating": "yellow",
                 "description": "Weather forecast unavailable for this time.",
@@ -164,7 +164,7 @@ def _early_warning(lat, lon, start_times):
                 "cloud_cover": None,
             }
         )
-        for t in start_times
+        for start_time in start_times
     ]
 
 
@@ -177,16 +177,16 @@ _rules_cache = {}  # (lat, lon) -> (fetched_at, {"YYYY-MM-DDTHH:00": {"status", 
 
 def _rule_text(name, check):
     """Plain-English reason for a failed launch rule."""
-    v = check.get("value")
+    value = check.get("value")
     limit = check.get("limit")
     return {
-        "surface_wind": f"Surface wind {v} mph (limit {limit})",
-        "wind_gusts": f"Gusts {v} mph (limit {limit})",
-        "rain": f"Rain {v} in/hr (limit {limit})",
-        "visibility": f"Visibility {v} mi (minimum {limit})",
+        "surface_wind": f"Surface wind {value} mph (limit {limit})",
+        "wind_gusts": f"Gusts {value} mph (limit {limit})",
+        "rain": f"Rain {value} in/hr (limit {limit})",
+        "visibility": f"Visibility {value} mi (minimum {limit})",
         "winds_aloft": f"Winds aloft {check.get('maximum_mph')} mph (limit {limit})",
         "thunderstorm": "Thunderstorm forecast",
-        "cloud_ceiling_proxy": f"Low cloud {v}% (limit {limit}%)",
+        "cloud_ceiling_proxy": f"Low cloud {value}% (limit {limit}%)",
     }.get(name, name.replace("_", " "))
 
 
@@ -211,7 +211,7 @@ def _launch_rules(lat, lon):
     for _, hour in forecast.iterrows():
         try:
             evaluated = weatherApi.evaluate_weather(hour)
-            checks = {name: c for name, c in evaluated["checks"].items() if _has_data(c)}
+            checks = {name: result for name, result in evaluated["checks"].items() if _has_data(result)}
         except (ValueError, TypeError):
             checks = {}  # a blank forecast value this hour: rely on the early warning
         results[hour["time"].strftime("%Y-%m-%dT%H:00")] = checks
@@ -234,8 +234,8 @@ def rate_windows(lat, lon, start_times):
         return early
 
     combined = []
-    for t, warning in zip(start_times, early):
-        hour = t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00")
+    for start_time, warning in zip(start_times, early):
+        hour = start_time.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00")
         checks = rules.get(hour)
 
         # Beyond the forecast: neither engine has data for this hour
@@ -246,7 +246,7 @@ def rate_windows(lat, lon, start_times):
             })
             continue
 
-        failed = [_rule_text(name, c) for name, c in checks.items() if c["status"] == "FAIL"]
+        failed = [_rule_text(name, result) for name, result in checks.items() if result["status"] == "FAIL"]
         warned = warning.get("description", "")
         flagged = warning.get("rating") in ("yellow", "red") and warned not in ("", "Good launch conditions.")
 
