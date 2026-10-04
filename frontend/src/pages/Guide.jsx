@@ -1,4 +1,4 @@
-import { Accordion, Badge, Button, Card, Container, Group, Kbd, List, SimpleGrid, Stack, Table, Text, ThemeIcon, Title } from '@mantine/core'
+import { Accordion, Badge, Button, Card, Container, Group, List, SimpleGrid, Stack, Table, Text, ThemeIcon, Title } from '@mantine/core'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '../routes.js'
 
@@ -169,10 +169,6 @@ export default function Guide() {
                 <List spacing="xs" size="sm">
                   <List.Item><b>Spots to view the launch</b> (top-right panel): expand it for nearby public viewing places, with photos, distance from the pad and a Google Maps link.</List.Item>
                   <List.Item><b>Sources & credits</b> (top-right panel and About page): where every image, video and dataset comes from.</List.Item>
-                  <List.Item>
-                    <b>Presentation page</b>: move between slides with <Kbd>↓</Kbd> / <Kbd>↑</Kbd>, <Kbd>Space</Kbd>,{' '}
-                    <Kbd>Page Down</Kbd>, <Kbd>Home</Kbd> / <Kbd>End</Kbd>, or the dots on the right.
-                  </List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>

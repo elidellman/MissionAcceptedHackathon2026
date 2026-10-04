@@ -15,7 +15,7 @@ export const NAV_ITEMS = [
   ROUTES.missionControl,
   ROUTES.guide,
   ROUTES.info,
-  ROUTES.presentation,
+  // ROUTES.presentation is hidden from the nav bar (page still works at /presentation)
   ROUTES.team,
   ROUTES.about,
 ]
