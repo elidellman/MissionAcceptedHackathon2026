@@ -2689,6 +2689,7 @@ export default function SceneViewport({
       'requesting debris check:',
       Object.fromEntries(qs)
     )
+    const API_URL = import.meta.env.VITE_API_URL || ''
 
     fetch(
       `${API_URL}/api/debris?${qs}`,
