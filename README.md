@@ -44,7 +44,7 @@ Mission Control is an interactive 3D Earth for planning rocket launches. Pick a 
 From the **project root** (not inside `backend/`):
 
 ```bash
-pip install flask requests numpy pandas sgp4 openmeteo-requests requests-cache retry-requests
+pip install -r requirements.txt
 flask --app backend.flaskr run --debug
 ```
 
@@ -67,7 +67,7 @@ Open the address Vite prints, usually `http://localhost:5173`. Vite forwards eve
 | Problem | Fix |
 |---|---|
 | `ModuleNotFoundError: No module named 'backend'` | You started Flask from inside `backend/`. Run `cd ..` and start it from the project root. |
-| `No module named 'openmeteo_requests'` (or similar) | Re-run the `pip install` line above. |
+| `No module named 'openmeteo_requests'` (or similar) | Run `pip install -r requirements.txt` from the project root. |
 | Every window says CAUTION / "forecast unavailable" | The computer can't reach Open-Meteo. Check the internet connection. |
 | Error banner on the Mission Control page | The Flask server isn't running, or crashed. Check its terminal. |
 | A live video won't play | YouTube stream IDs change now and then. Update them in `frontend/src/features/mission-control/launchConfig.js`. |
@@ -78,6 +78,7 @@ Open the address Vite prints, usually `http://localhost:5173`. Vite forwards eve
 
 ```
 MissionAcceptedHackathon2026/
+├── requirements.txt         # Python libraries for the backend
 ├── backend/
 │   ├── flaskr/
 │   │   ├── __init__.py          # Flask app and all API routes

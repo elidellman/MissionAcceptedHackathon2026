@@ -1,0 +1,11 @@
+# Backend (Flask) dependencies. Install from the project root with:
+#   pip install -r requirements.txt
+
+flask>=3.0                # web server and API routes
+requests>=2.31            # The Space Devs, CelesTrak and Open-Meteo calls
+numpy>=1.26               # debris maths
+sgp4>=2.22                # debris orbit propagation
+pandas>=2.1               # launch-rules weather engine
+openmeteo-requests>=1.2   # launch-rules weather engine (Open-Meteo client)
+requests-cache>=1.1       # caches Open-Meteo responses (.cache.sqlite)
+retry-requests>=2.0       # retries failed Open-Meteo requests
