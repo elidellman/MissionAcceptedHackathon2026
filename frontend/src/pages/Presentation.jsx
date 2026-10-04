@@ -22,145 +22,64 @@ const SLIDES = [
     transition: 'blur',
     kicker: 'Mission Accepted 2026 · Challenge 2',
     title: 'Mission Control',
-    subtitle: 'A launch dashboard that tells planners and the public when to launch, and why',
-    body: 'Eli · Ely · Oliver · Hazem · Jeremy ',
-  },
-  {
-    id: 'problem',
-    layout: 'right',
-    transition: 'slide-right',
-    kicker: '01 · The problem',
-    title: 'Launching is a timing puzzle',
-    subtitle: "A missed window costs millions, and the public can't follow along",
-    body:
-      "Every launch has to line up a satellite's orbit with a spinning Earth, the weather and what the rocket can do. " +
-      'Mission planners need the answer and the reasoning behind it. The public has no simple way to see when the next launch is, ' +
-      "where it's going, or whether it's likely to fly.",
-    images: [{ src: null, label: 'Screenshot: Mission Control dashboard' }],
-  },
-  {
-    id: 'approach',
-    layout: 'trio',
-    transition: 'fade-up',
-    kicker: '02 · Our approach',
-    title: 'Three inputs, three answers',
-    subtitle: 'A Track 2 dashboard, built on a real Track 1 engine',
-    points: [
-      {
-        title: 'You pick',
-        body: 'Launch site (Cape Canaveral or Spaceport Nova Scotia), orbit type (LEO, Polar or SSO), and how many days to search.',
-      },
-      {
-        title: 'The engine works it out',
-        body: "Launch heading, where the orbit plane crosses the pad, and when Earth's rotation lines them up.",
-      },
-      {
-        title: 'You see',
-        body: 'A countdown to the next window, the trajectory on a 3D globe, and a GO / CAUTION / NO-GO weather badge. No rocket data to type in.',
-      },
-    ],
-    images: [{ src: null, label: 'Screenshot: Mission Inputs panel' }],
+    subtitle: 'Pick a launch site and an orbit, and see when you can launch',
+    body: 'Eli · Ely · Oliver · Hazem · Jeremy',
   },
   {
     id: 'demo',
     layout: 'duo',
     transition: 'zoom',
-    kicker: '03 · Live demo',
-    title: "Let's launch something",
-    subtitle: 'One scripted path: Florida first, then Nova Scotia',
+    kicker: '01 · Live demo',
+    title: 'Let’s launch something',
+    subtitle: 'Calculate the windows, then simulate the launch',
     body:
-      'Step 1: Cape Canaveral, SSO, 7 days. The countdown starts, window cards show GO / CAUTION / NO-GO, and the ascent draws on the globe. ' +
-      "Step 2: switch to Nova Scotia and LEO, and the reachability warning appears. Why? That's the next two slides.",
+      'Pick Cape Canaveral or Spaceport Nova Scotia and an orbit (LEO, Polar or SSO), then calculate: the countdown and window cards fill in, ' +
+      'each rated GO / CAUTION / NO-GO. Press Simulate to watch the rocket climb along its path, reach orbit and release the satellite, ' +
+      'while the ascent is checked for space debris.',
     images: [
-      { src: null, label: 'Screenshot: Cape Canaveral SSO windows' },
-      { src: null, label: 'Screenshot: Nova Scotia LEO warning' },
+      { src: null, label: 'Screenshot: launch windows and countdown' },
+      { src: null, label: 'Screenshot: launch simulation' },
     ],
   },
   {
-    id: 'orbital-logic',
+    id: 'backend',
     layout: 'trio',
     transition: 'fade-up',
-    kicker: '04 · The orbital logic',
-    title: 'How our backend finds a launch window',
-    subtitle: 'A simple main mode, with precise timing in advanced settings',
+    kicker: '02 · The backend',
+    title: 'How every launch window is found',
+    subtitle: 'A Flask API and Python engine that calculates, filters, rates and screens each window',
     points: [
       {
-        title: 'Which way to fly: sin Az = cos i / cos φ',
-        body: "Every request gets a launch heading (azimuth) from the orbit's inclination i and the pad's latitude φ. Cape Canaveral to LEO 45.1° gives 53.5°, roughly north-east.",
-      },
-      {
-        title: 'Main mode: hourly slots for 16 days',
-        body: 'From just the site and orbit type, the backend lists every hour over the next 16 days (384 slots) as a candidate launch time, ready for the weather check.',
-      },
-      {
-        title: 'Advanced settings (coming to the UI): exact windows',
+        title: '1. Calculate the windows',
         body:
-          "Give a RAAN Ω and the backend finds where the orbit plane crosses the pad's latitude (sin θ = −tan φ / tan i), " +
-          "uses sidereal time and Earth's spin (t = Δλ / ω⊕) to time each crossing, and opens a window 10 minutes either side.",
+          'From the site and orbit type the engine works out the launch heading (sin Az = cos i / cos φ) and lists launch times for the next 16 days. ' +
+          'Given an orbit’s RAAN, it times exactly when Earth’s rotation carries the pad under the orbit plane.',
       },
       {
-        title: 'Advanced run: 32 windows in 16 days',
-        body: 'Cape Canaveral, LEO, RAAN 30°: two windows a day (one per plane crossing), each about 4 minutes earlier than the day before, because Earth turns once every 23 h 56 min relative to the stars.',
+        title: '2. Avoid scheduled launches',
+        body: 'Upcoming launches at the same site come from The Space Devs Launch Library; any window that overlaps one is removed.',
+      },
+      {
+        title: '3. Rate the weather',
+        body:
+          'A live 16-day Open-Meteo forecast for the pad rates every window: wind gusts, rain chance, cloud cover and thunderstorms become GO, CAUTION or NO-GO.',
+      },
+      {
+        title: '4. Screen for space debris',
+        body:
+          'Thousands of tracked debris objects from CelesTrak are propagated with SGP4 to launch time. The whole ascent path is checked for anything within 10 km.',
       },
     ],
-    images: [{ src: null, label: "Diagram: orbit plane crossing the pad's latitude" }],
-  },
-  {
-    id: 'reachability',
-    layout: 'left',
-    transition: 'slide-left',
-    kicker: '05 · Why the site matters',
-    title: 'Not every orbit is reachable',
-    subtitle: 'Nova Scotia is built for polar and SSO, and the maths shows it',
-    body:
-      'An orbit never climbs above its inclination, so a pad further from the equator than that is never passed over. ' +
-      'In our advanced calculation, if |tan φ / tan i| > 1 there is no crossing and no windows. Nova Scotia at 45.3° N just misses LEO at 45.1°, ' +
-      'so the dashboard warns you. Polar and SSO pass over every latitude, which is why a Canadian spaceport this far north suits them.',
-    images: [{ src: null, label: 'Diagram: inclinations each site can reach' }],
-  },
-  {
-    id: 'built',
-    layout: 'wide',
-    transition: 'fade-up',
-    kicker: "06 · How it's built",
-    title: 'The stack',
-    subtitle: 'React and three.js on top, Flask and Python maths underneath',
-    body:
-      'React + Vite + Mantine for the dashboard, a three.js globe for the trajectory, and a Flask API (/api/launch-windows) ' +
-      'that calls our Python orbital engine. Weather is attached to each window by the backend, so the user never types it. [Mock or live weather API?]',
-    images: [{ src: null, label: 'Diagram: React → Flask → Python engine' }],
-  },
-  {
-    id: 'checklist',
-    layout: 'trio',
-    transition: 'fade-up',
-    kicker: '07 · Against the brief',
-    title: 'What we delivered',
-    subtitle: "What's done, and what's still mocked",
-    points: [
-      {
-        title: 'Done',
-        body: 'Countdown to the next window. Backend launch heading and 16-day launch slots from orbit type (Track 1 core).',
-      },
-      {
-        title: 'Simplified or mocked',
-        body: '3D trajectory is a simplified ascent arc. Weather is [mock data].',
-      },
-      {
-        title: 'Built in the backend, not in the UI yet',
-        body: 'Advanced settings: exact RAAN-based windows and the vehicle-duration heading correction. Still to come: the viewing map bonus.',
-      },
-    ],
-    images: [{ src: null, label: 'Screenshot: window cards with weather badges' }],
+    images: [{ src: null, label: 'Diagram: site + orbit → windows → launch clash check → weather → debris check' }],
   },
   {
     id: 'closing',
     layout: 'closing',
     transition: 'blur',
-    kicker: "08 · What's next",
+    kicker: 'Mission Control',
     title: 'Thank you. Questions?',
-    subtitle: 'Next: a viewing map, flight time in the windows, live weather and real ascent physics',
-    body: 'Mission Control · Eli · Ely · Oliver · Hazem · Jeremy · Jeremiah',
+    subtitle: 'Mission Accepted 2026 · Challenge 2',
+    body: 'Eli · Ely · Oliver · Hazem · Jeremy',
   },
 ]
 
