@@ -396,7 +396,7 @@ export default function HudOverlay({
         {windowsOpen && windows.length > 0 && (
           <Group gap="xs" wrap="nowrap" mt={6} className={classes.windowRow}>
             {windows.map((w) => {
-              const wx = WEATHER[w.weather]
+            const wx = WEATHER[w.weather?.rating] ?? WEATHER.yellow
               return (
                 // A div (not a <button>) because it contains the Simulate button,
                 // and a button can't be nested inside another button.
@@ -430,19 +430,24 @@ export default function HudOverlay({
                       {w.durationMin} min
                     </Text>
                     <Group>
-                      <Badge size="xs" color={wx.color}>
-                        {wx.label}
-                      </Badge>
-                      <Button
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSimulate(w.id)
-                        }}
-                      >
-                        Simulate
-                      </Button>
-                    </Group>
+                    <Badge size="xs" color={wx.color}>
+                      {wx.label}
+                    </Badge>
+
+                    <Button
+                      size="xs"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleSimulate(w.id)
+                      }}
+                    >
+                      Simulate
+                    </Button>
+                  </Group>
+
+                  <Text size="xs" c="dimmed">
+                    {w.weather?.description ?? 'Weather information unavailable.'}
+                  </Text>
                   </Stack>
                 </Paper>
               )
