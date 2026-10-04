@@ -845,13 +845,13 @@ function getAscent(
    * At 700 km this is roughly 2.7° of orbital travel.
    */
   const orbitTravel =
-  Math.min(
-    0.7,
-    Math.max(
-      0.2,
-      targetAltitudeKm / 1800
+    Math.min(
+      0.7,
+      Math.max(
+        0.2,
+        targetAltitudeKm / 1800
+      )
     )
-  )
 
   const ascent = []
 
@@ -2082,22 +2082,30 @@ export default function SceneViewport({
 
     let raf = null
 
-    // CAMERA FOLLOW (chase cam): the camera sits behind the rocket / satellite, a little
-    // above it and off to one side, and looks AT it, so you see it fly with the Earth below.
+    // CAMERA FOLLOW (chase cam): the camera follows the rocket / satellite and looks AT it.
     //   • scroll wheel: zooms towards / away from it and keeps following
     //   • click or drag: stops following and gives you the normal globe controls back
     // While following, the globe's own orbit controls are paused: every frame they would
     // otherwise point the camera back at Earth's centre and push it an Earth-radius away.
     // Angles are in degrees, distances in globe units (Earth radius = 100).
+    //
+    //   distance   how far the camera sits from the object
+    //   pitch      how high above the object's local horizon (0 = level, 90 = straight down)
+    //   yaw        how far round to the side of the object's direction of travel
+    //   lookBlend  tilt the aim from the object towards Earth's centre (0–1; 0 = look at the object)
+    //   centerLook true = the object is locked to the exact centre of the screen
+    //              (the aim point follows it instantly; only the camera position is eased)
+    //   smoothingMs how lazily the camera position catches up (lower = tighter)
     const CHASE = {
-      // Ascent: chase cam behind the rocket, a bit above and to the side
+      // Ascent: chase cam behind the rocket, a bit above and to the side (unchanged)
       ascent: { distance: 22, pitch: 20, yaw: 15 },
-      // Orbit: keep the same angled view from behind, then slowly pull outward over the
-      // first part of the orbit until most of the planet is in frame (still at an angle).
+      // Orbit: starts exactly like the ascent view (so nothing jumps when the rocket reaches
+      // orbit), then slowly rises and pulls back into a high, angled top-down view, with the
+      // satellite locked to the centre of the screen the whole time.
       orbit: {
-        start: { distance: 22, pitch: 20, yaw: 15, lookBlend: 0 },
-        end: { distance: 260, pitch: 24, yaw: 15, lookBlend: 0.45 }, // lookBlend: tilt the view towards Earth's centre (0–1)
-        zoomOutFraction: 0.2, // how much of one orbit the zoom-out takes (0.2 = a fifth)
+        start: { distance: 22, pitch: 20, yaw: 15, lookBlend: 0, centerLook: true, smoothingMs: 150 },
+        end: { distance: 150, pitch: 60, yaw: 90, lookBlend: 0, centerLook: true, smoothingMs: 150 },
+        zoomOutFraction: 0.2, // how much of one orbit the pull-back takes (0.2 = a fifth)
       },
     }
     // Blend between two camera setups; s goes 0 → 1
@@ -2106,17 +2114,21 @@ export default function SceneViewport({
       pitch: a.pitch + (b.pitch - a.pitch) * s,
       yaw: a.yaw + (b.yaw - a.yaw) * s,
       lookBlend: a.lookBlend + (b.lookBlend - a.lookBlend) * s,
+      smoothingMs: (a.smoothingMs ?? 350) + ((b.smoothingMs ?? 350) - (a.smoothingMs ?? 350)) * s,
+      centerLook: a.centerLook || b.centerLook,
     })
-    const FOLLOW_SMOOTHING_MS = 350 // higher = lazier camera, lower = snappier
+    const FOLLOW_SMOOTHING_MS = 350 // default for views that don't set smoothingMs
+    const UP_SMOOTHING_MS = 500 // how gently the screen's "up" direction turns to match the satellite's local up
     const ZOOM_LIMITS = { min: 6, max: 400 } // scroll-zoom range while following
     const camera = globe.camera()
+    const originalCameraUp = camera.up.clone() // restored when following ends
     const controls = globe.controls()
     const originalControlsUpdate = controls.update
     controls.update = () => false // paused while following (restored on click or when the simulation ends)
     const originalEnableZoom = controls.enableZoom
     controls.enableZoom = false // our own scroll-zoom below; stops the controls saving up a zoom jump
 
-    const lookTarget = new THREE.Vector3() // eases from Earth's centre to the object
+    const lookTarget = new THREE.Vector3() // the point the camera aims at
     const up = new THREE.Vector3()
     const fwd = new THREE.Vector3()
     const side = new THREE.Vector3()
@@ -2128,6 +2140,7 @@ export default function SceneViewport({
     const restoreControls = () => {
       if (controls.update !== originalControlsUpdate) controls.update = originalControlsUpdate
       controls.enableZoom = originalEnableZoom
+      camera.up.copy(originalCameraUp)
     }
     const viewEl = globeRef.current
     const stopFollowing = () => {
@@ -2171,6 +2184,14 @@ export default function SceneViewport({
       fwd.normalize()
       side.crossVectors(fwd, up).normalize()
 
+      // Locked-on views: turn the camera's own "up" to the object's local up (away from Earth),
+      // so a steep, high view stays stable (no flipping) with its direction of travel pointing
+      // up the screen
+      if (view.centerLook) {
+        const kUp = 1 - Math.exp(-dtMs / UP_SMOOTHING_MS)
+        camera.up.lerp(up, kUp).normalize()
+      }
+
       const pitch = THREE.MathUtils.degToRad(view.pitch)
       const yaw = THREE.MathUtils.degToRad(view.yaw)
       // behind (−fwd), swung sideways by yaw, raised by pitch
@@ -2184,9 +2205,15 @@ export default function SceneViewport({
       const distance = THREE.MathUtils.clamp(view.distance * zoomFactor, ZOOM_LIMITS.min, ZOOM_LIMITS.max)
       desired.copy(position).addScaledVector(offset, distance)
       camera.position.lerp(desired, k)
-      // Look at the object, or partway from it towards Earth's centre (keeps the planet in frame)
+
+      // Aim at the object, or partway from it towards Earth's centre (keeps the planet in frame)
       const aim = desired.copy(position).multiplyScalar(1 - (view.lookBlend ?? 0))
-      lookTarget.lerp(aim, k)
+      if (view.centerLook) {
+        // Locked on: no easing on the aim, so the object stays dead centre however fast it moves
+        lookTarget.copy(aim)
+      } else {
+        lookTarget.lerp(aim, k)
+      }
       camera.lookAt(lookTarget)
     }
     const ascentDirection = new THREE.Vector3(
@@ -2322,7 +2349,7 @@ export default function SceneViewport({
           progress >= 1
         ) {
           ascentDone = true
-          zoomFactor = 1 // fresh zoom for the orbit overview
+          zoomFactor = 1 // fresh zoom for the orbit view
 
           rocket.visible =
             false
@@ -2398,7 +2425,7 @@ export default function SceneViewport({
         })
         const aheadCoords = globe.getCoords(ahead.lat, ahead.lng, ahead.alt)
         orbitDirection.set(aheadCoords.x, aheadCoords.y, aheadCoords.z).sub(satellite.position)
-        // Slow zoom-out over the first `zoomOutFraction` of an orbit (eased in and out)
+        // Slow pull-back over the first `zoomOutFraction` of an orbit (eased in and out)
         const orbitFraction = (omega * orbitTime) / (2 * Math.PI)
         const zoomT = Math.min(1, orbitFraction / CHASE.orbit.zoomOutFraction)
         const zoomS = zoomT * zoomT * (3 - 2 * zoomT)

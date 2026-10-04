@@ -1,3 +1,5 @@
+
+
 import math
 import os
 from datetime import datetime, timedelta, timezone
@@ -21,7 +23,7 @@ SITES = {
     },
 
     "nova-scotia": {
-        "key": "SpacePort",
+        "key": "Nova-Scotia",
         "name": "Spaceport Nova Scotia"
     },
 }
