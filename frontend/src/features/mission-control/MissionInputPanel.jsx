@@ -172,7 +172,7 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
               value={params.days}
               onChange={(value) => updateNumericValue('days', value)}
               min={1}
-              max={30}
+              max={16}
             />
 
             <NumberInput

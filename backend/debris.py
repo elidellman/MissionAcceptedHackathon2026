@@ -8,7 +8,7 @@ from sgp4 import omm
 from sgp4.api import Satrec, SatrecArray, jday
 
 URL = "https://celestrak.org/NORAD/elements/gp.php"
-QUERIES = [{"NAME": "DEB"}]          # or [{"GROUP": "cosmos-2251-debris"}, ...]
+QUERIES = [{"NAME": "DEB"}, {"GROUP": "active"}]          # or [{"GROUP": "cosmos-2251-debris"}, ...]
 CACHE = Path(__file__).parent / "debris_cache.json"
 MAX_AGE_S = 3 * 3600                 # don't hit CelesTrak more often than this
 

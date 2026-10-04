@@ -123,13 +123,25 @@ const toMission = (m) => ({
   vehicleDurationSec: m.vehicle_duration_sec,
 })
 
+// Weather arrives either as a plain rating ('green' | 'yellow' | 'red') or as an object
+// { rating, description }. The window cards always get the object form.
+const WEATHER_TEXT = {
+  green: 'Weather looks good for launch.',
+  yellow: 'Marginal weather: check conditions before launch.',
+  red: 'Weather rules out this window.',
+}
+const toWeather = (weather) =>
+  typeof weather === 'string'
+    ? { rating: weather, description: WEATHER_TEXT[weather] ?? 'Weather information unavailable.' }
+    : weather ?? null
+
 const toWindow = (w) => ({
   id: w.id,
   opensAt: w.opens_at,
   peakAt: w.peak_at,
   insertionAt: w.insertion_at,
   durationMin: w.duration_min,
-  weather: w.weather,
+  weather: toWeather(w.weather),
 })
 
 const toPoint = (p) => ({ tSec: p.t_sec, lat: p.lat, lon: p.lon, altKm: p.alt_km })

@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def parse_time(time_string):
@@ -82,6 +82,13 @@ def filter_conflicting_windows(windows, launches):
         for launch in launches:
             launch_start = launch["window_start"]
             launch_end = launch["window_end"]
+
+            # Some upcoming launches don't have a window yet: skip ones with no start,
+            # and treat a missing end as a one-hour window (comparing with None crashes)
+            if launch_start is None:
+                continue
+            if launch_end is None:
+                launch_end = launch_start + timedelta(hours=1)
 
             if windows_overlap(
                 window["start"],

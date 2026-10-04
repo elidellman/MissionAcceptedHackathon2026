@@ -150,6 +150,14 @@ export default function HudOverlay({
   const topRightRef = useRef(null)
   const topRightWidth = useWidth(topRightRef)
   const [windowsOpen, setWindowsOpen] = useState(true)
+  // Window ids whose weather reason is expanded ("Why? ▾")
+  const [openReasons, setOpenReasons] = useState(() => new Set())
+  const toggleReason = (id) =>
+    setOpenReasons((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
 
   // selectedWindow: the window the user clicked (undefined if none is selected)
   const selectedWindow = windows.find((w) => w.id === selectedId)
@@ -434,20 +442,42 @@ export default function HudOverlay({
                       {wx.label}
                     </Badge>
 
-                    <Button
-                      size="xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleSimulate(w.id)
-                      }}
-                    >
-                      Simulate
-                    </Button>
+                    {/* No simulating a launch the weather rules out */}
+                    {w.weather?.rating !== 'red' && (
+                      <Button
+                        size="xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSimulate(w.id)
+                        }}
+                      >
+                        Simulate
+                      </Button>
+                    )}
                   </Group>
 
-                  <Text size="xs" c="dimmed">
-                    {w.weather?.description ?? 'Weather information unavailable.'}
-                  </Text>
+                  {/* Weather reason, collapsed by default */}
+                  {w.weather?.description && (
+                    <>
+                      <UnstyledButton
+                        onClick={(e) => {
+                          e.stopPropagation() // don't select the window
+                          toggleReason(w.id)
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        aria-expanded={openReasons.has(w.id)}
+                      >
+                        <Text size="xs" c="dimmed" td="underline">
+                          Why? {openReasons.has(w.id) ? '▴' : '▾'}
+                        </Text>
+                      </UnstyledButton>
+                      {openReasons.has(w.id) && (
+                        <Text size="xs" c="dimmed" maw={220}>
+                          {w.weather.description}
+                        </Text>
+                      )}
+                    </>
+                  )}
                   </Stack>
                 </Paper>
               )

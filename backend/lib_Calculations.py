@@ -57,8 +57,9 @@ def get_Azimuth(launchSite, orbitType):
     inclination = OrbitTypes[orbitType]["inclination"]
     latitude = LaunchSites[launchSite]["latitude"]
 
+    # Launch azimuth: sin(Az) = cos(i) / cos(latitude)
     ratio = (
-        math.sin(math.radians(inclination))
+        math.cos(math.radians(inclination))
         / math.cos(math.radians(latitude))
     )
 
@@ -67,6 +68,11 @@ def get_Azimuth(launchSite, orbitType):
         return None
 
     azimuth = math.degrees(math.asin(ratio))
+
+    # Retrograde orbits (inclination > 90°, e.g. SSO) are reached by launching
+    # south-ish: use the southern solution (e.g. Cape Canaveral → SSO ≈ 189°)
+    if inclination > 90:
+        azimuth = 180 - azimuth
 
     return azimuth
 
