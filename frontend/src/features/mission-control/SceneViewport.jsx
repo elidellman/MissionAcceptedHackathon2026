@@ -2545,10 +2545,12 @@ export default function SceneViewport({
       lon: point.lng,
       alt_km: (point.alt / ALT_SCALE) * EARTH_R,
     }))
+    const API_URL = import.meta.env.VITE_API_URL || ''
 
+    const url = `${API_URL}/api/debris?${params}`
     const ctrl = new AbortController()
     setCollision({ status: 'checking' })
-    fetch('/api/debris/path-check', {
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ start: start.toISOString(), points, radius_km: DEBRIS_RADIUS_KM }),
