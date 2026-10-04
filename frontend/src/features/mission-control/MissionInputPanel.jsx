@@ -69,12 +69,12 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
   }
 
   const pickOrbit = (orbit) => {
-    const p = ORBIT_PRESETS[orbit]
+    const preset = ORBIT_PRESETS[orbit]
     const next = {
       ...params,
       orbit,
-      inclinationDeg: p.inclinationDeg,
-      altitudeKm: p.altitudeKm,
+      inclinationDeg: preset.inclinationDeg,
+      altitudeKm: preset.altitudeKm,
     }
     if (onPreviewChange) onPreviewChange(next)
   }
@@ -113,15 +113,15 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
 
       <ScrollArea.Autosize mah="calc(100dvh - 330px)" offsetScrollbars>
         <form
-          onSubmit={(e) => {
-            e.preventDefault()
+          onSubmit={(event) => {
+            event.preventDefault()
             if (valid) commitDraft({ ...params, inclinationDeg: incl, altitudeKm: Number(params.altitudeKm) })
           }}
         >
           <Stack gap="sm">
             <Select
               label="Launch site"
-              data={LAUNCH_SITES.map((s) => ({ value: s.id, label: s.name }))}
+              data={LAUNCH_SITES.map((site) => ({ value: site.id, label: site.name }))}
               value={params.siteId}
               onChange={(value) => {
                 if (!value || value === params.siteId) return

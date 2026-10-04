@@ -21,7 +21,7 @@ export default function PageCredits({ ids = [], title = 'Sources & credits', col
   return (
     <Stack gap={4} pt={8} style={{ borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }} {...props}>
       {collapsible ? (
-        <UnstyledButton onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <UnstyledButton onClick={() => setOpen((wasOpen) => !wasOpen)} aria-expanded={open}>
           <Group justify="space-between">
             {heading}
             <Text size="xs" c="dimmed" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}>
@@ -34,17 +34,17 @@ export default function PageCredits({ ids = [], title = 'Sources & credits', col
       )}
 
       {open &&
-        items.map((c) => (
-          <Text key={c.what} size="xs" c="dimmed">
-            {c.what}:{' '}
-            {c.url ? (
-              <Anchor href={c.url} target="_blank" rel="noopener noreferrer" size="xs">
-                {c.by}
+        items.map((credit) => (
+          <Text key={credit.what} size="xs" c="dimmed">
+            {credit.what}:{' '}
+            {credit.url ? (
+              <Anchor href={credit.url} target="_blank" rel="noopener noreferrer" size="xs">
+                {credit.by}
               </Anchor>
             ) : (
-              c.by
+              credit.by
             )}
-            {c.license && ` (${c.license})`}
+            {credit.license && ` (${credit.license})`}
           </Text>
         ))}
     </Stack>

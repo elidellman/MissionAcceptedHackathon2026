@@ -61,8 +61,8 @@ if __name__ == "__main__":
 
     print(f"\nNumber of available launch windows: {len(available_windows)}")
 
-    for i, window in enumerate(available_windows, 1):
-        print(f"\nAvailable Window {i}")
+    for number, window in enumerate(available_windows, 1):
+        print(f"\nAvailable Window {number}")
         print(f"Start: {window['start'].strftime('%Y-%m-%d %H:%M')}")
         print(f"Peak:  {window['peak'].strftime('%Y-%m-%d %H:%M')}")
         print(f"End:   {window['end'].strftime('%Y-%m-%d %H:%M')}")

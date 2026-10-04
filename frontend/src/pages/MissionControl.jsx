@@ -88,7 +88,7 @@ export default function MissionControl() {
         setWindows(windows)
         setSelectedId(windows[0]?.id ?? null)
       })
-      .catch((e) => !cancelled && setError(e.message))
+      .catch((error) => !cancelled && setError(error.message))
       .finally(() => !cancelled && setLoadingWindows(false))
 
     return () => {
@@ -106,7 +106,7 @@ export default function MissionControl() {
 
     fetchTrajectory(selectedId)
       .then((points) => !cancelled && setTrajectory(points))
-      .catch((e) => !cancelled && setError(e.message))
+      .catch((error) => !cancelled && setError(error.message))
 
     return () => {
       cancelled = true
@@ -123,16 +123,16 @@ export default function MissionControl() {
 
   const handleSimulateLaunch = useCallback(
     (windowId) => {
-      const w = windows.find((win) => win.id === windowId)
-      if (!w || !mission) return
+      const launchWindow = windows.find((candidate) => candidate.id === windowId)
+      if (!launchWindow || !mission) return
 
       console.log('=== SIMULATE LAUNCH ===', {
         window: {
-          id: w.id,
-          opensAt: w.opensAt,
-          closesAt: w.closesAt,
-          durationMin: w.durationMin,
-          weather: w.weather,
+          id: launchWindow.id,
+          opensAt: launchWindow.opensAt,
+          closesAt: launchWindow.closesAt,
+          durationMin: launchWindow.durationMin,
+          weather: launchWindow.weather,
         },
         launchParams: {
           site: mission.launchSite,

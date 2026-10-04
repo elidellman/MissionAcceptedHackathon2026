@@ -60,11 +60,11 @@ def calculate_launch_windows(
 
         windows = [
             {
-                "start": current_time + timedelta(hours=i),
-                "end": current_time + timedelta(hours=i + 1),
+                "start": current_time + timedelta(hours=hour),
+                "end": current_time + timedelta(hours=hour + 1),
                 "available": True
             }
-            for i in range(384)
+            for hour in range(384)
         ]
 
     # Advanced mode: actual RAAN alignment windows

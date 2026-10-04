@@ -74,7 +74,7 @@ async function fetchIssTrack() {
 
   const stamps = Array.from(
     { length: 20 },
-    (_, k) => now + (k - 10) * 300
+    (_, index) => now + (index - 10) * 300
   )
 
   const get = async (ts) => {
@@ -91,14 +91,14 @@ async function fetchIssTrack() {
 
   const first = await get(stamps.slice(0, 10))
 
-  await new Promise((r) => setTimeout(r, 1100))
+  await new Promise((resolve) => setTimeout(resolve, 1100))
 
   const second = await get(stamps.slice(10))
 
-  return [...first, ...second].map((p) => ({
-    lat: p.latitude,
-    lng: p.longitude,
-    alt: altFrac(p.altitude),
+  return [...first, ...second].map((issPoint) => ({
+    lat: issPoint.latitude,
+    lng: issPoint.longitude,
+    alt: altFrac(issPoint.altitude),
   }))
 }
 
@@ -158,11 +158,11 @@ function makeRocketModel({ withFlame = false } = {}) {
   engine.position.y = 0.1
   rocket.add(body, band, nose, engine)
 
-  for (let k = 0; k < 4; k++) {
+  for (let finIndex = 0; finIndex < 4; finIndex++) {
     const fin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 0.28), dark)
-    const a = (k * Math.PI) / 2
-    fin.position.set(Math.cos(a) * 0.3, 0.38, Math.sin(a) * 0.3)
-    fin.rotation.y = -a
+    const finAngle = (finIndex * Math.PI) / 2
+    fin.position.set(Math.cos(finAngle) * 0.3, 0.38, Math.sin(finAngle) * 0.3)
+    fin.rotation.y = -finAngle
     rocket.add(fin)
   }
 
@@ -190,26 +190,26 @@ function makeLaunchTower() {
   const tower = new THREE.Group()
   const red = mat('#c62828')
   const steel = mat('#9e9e9e')
-  const h = 2.9
+  const towerHeight = 2.9
   // four corner legs
-  ;[[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([x, z]) => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.06), red)
-    leg.position.set(x * 0.17, h / 2, z * 0.17)
+  ;[[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([cornerX, cornerZ]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, towerHeight, 0.06), red)
+    leg.position.set(cornerX * 0.17, towerHeight / 2, cornerZ * 0.17)
     tower.add(leg)
   })
   // horizontal rings every few levels
-  for (let y = 0.3; y < h; y += 0.45) {
+  for (let ringHeight = 0.3; ringHeight < towerHeight; ringHeight += 0.45) {
     const ring = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.4), red)
-    ring.position.y = y
+    ring.position.y = ringHeight
     tower.add(ring)
   }
   // crane arm + hook line at the top
   const arm = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.1), steel)
-  arm.position.set(0.45, h - 0.15, 0)
+  arm.position.set(0.45, towerHeight - 0.15, 0)
   const counterweight = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.18), steel)
-  counterweight.position.set(-0.2, h - 0.15, 0)
+  counterweight.position.set(-0.2, towerHeight - 0.15, 0)
   const cable = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.5, 0.015), steel)
-  cable.position.set(0.85, h - 0.45, 0)
+  cable.position.set(0.85, towerHeight - 0.45, 0)
   // access arm reaching to the rocket
   const access = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 0.08), steel)
   access.position.set(0.32, 2.0, 0)
@@ -226,9 +226,9 @@ function makeAssemblyBuilding() {
   low.position.set(0.95, 0.35, 0)
   vab.add(main, low)
   // tall doors on the front face
-  ;[-0.3, 0.3].forEach((x) => {
+  ;[-0.3, 0.3].forEach((doorX) => {
     const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.45, 0.02), mat('#37474f'))
-    door.position.set(x, 0.76, 0.56)
+    door.position.set(doorX, 0.76, 0.56)
     vab.add(door)
   })
   // flag band (red/white/blue) near the top corner
@@ -312,10 +312,10 @@ function makeSatelliteModel() {
 
 /** Dispose every geometry/material in a model. */
 function disposeModel(obj) {
-  obj.traverse((o) => {
-    o.geometry?.dispose()
-    if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose())
-    else o.material?.dispose()
+  obj.traverse((part) => {
+    part.geometry?.dispose()
+    if (Array.isArray(part.material)) part.material.forEach((material) => material.dispose())
+    else part.material?.dispose()
   })
 }
 
@@ -329,19 +329,19 @@ function makeStarField(radius, count = 4000) {
     [1, 0.93, 0.8],
   ]
 
-  for (let n = 0; n < count; n++) {
-    const u = Math.random() * 2 - 1
+  for (let starIndex = 0; starIndex < count; starIndex++) {
+    const heightFraction = Math.random() * 2 - 1
     const theta = Math.random() * Math.PI * 2
-    const r = radius * (1 + Math.random() * 0.3)
-    const s = Math.sqrt(1 - u * u)
+    const starDistance = radius * (1 + Math.random() * 0.3)
+    const ringRadius = Math.sqrt(1 - heightFraction * heightFraction)
 
     positions.set(
       [
-        r * s * Math.cos(theta),
-        r * u,
-        r * s * Math.sin(theta),
+        starDistance * ringRadius * Math.cos(theta),
+        starDistance * heightFraction,
+        starDistance * ringRadius * Math.sin(theta),
       ],
-      n * 3
+      starIndex * 3
     )
 
     const brightness =
@@ -351,8 +351,8 @@ function makeStarField(radius, count = 4000) {
       tints[Math.floor(Math.random() * tints.length)]
 
     colors.set(
-      tint.map((c) => c * brightness),
-      n * 3
+      tint.map((channel) => channel * brightness),
+      starIndex * 3
     )
   }
 
@@ -391,27 +391,27 @@ function orbitPosition({
   raanDeg = 0,
   theta,
 }) {
-  const i =
+  const inclination =
     (inclinationDeg * Math.PI) / 180
 
   const raan =
     (raanDeg * Math.PI) / 180
 
-  const x = Math.cos(theta)
-  const y = Math.sin(theta) * Math.cos(i)
-  const z = Math.sin(theta) * Math.sin(i)
+  const planeX = Math.cos(theta)
+  const planeY = Math.sin(theta) * Math.cos(inclination)
+  const planeZ = Math.sin(theta) * Math.sin(inclination)
 
   const xr =
-    x * Math.cos(raan) -
-    y * Math.sin(raan)
+    planeX * Math.cos(raan) -
+    planeY * Math.sin(raan)
 
   const yr =
-    x * Math.sin(raan) +
-    y * Math.cos(raan)
+    planeX * Math.sin(raan) +
+    planeY * Math.cos(raan)
 
   return {
     lat:
-      (Math.asin(z) * 180) / Math.PI,
+      (Math.asin(planeZ) * 180) / Math.PI,
 
     lng:
       (Math.atan2(yr, xr) * 180) / Math.PI,
@@ -429,14 +429,14 @@ function orbitPoints({
 }) {
   const pts = []
 
-  for (let n = 0; n <= steps; n++) {
+  for (let step = 0; step <= steps; step++) {
     pts.push(
       orbitPosition({
         altKm,
         inclinationDeg,
         raanDeg,
         theta:
-          (n / steps) * 2 * Math.PI,
+          (step / steps) * 2 * Math.PI,
       })
     )
   }
@@ -455,10 +455,10 @@ function orbitShell(
     renderOrder = 0,
   }
 ) {
-  const R = globe.getGlobeRadius()
+  const globeRadius = globe.getGlobeRadius()
 
   const radius = km =>
-    R * (1 + altFrac(km))
+    globeRadius * (1 + altFrac(km))
 
   const thetaStart =
     ((90 - maxLatDeg) * Math.PI) / 180
@@ -513,15 +513,15 @@ function makePoints(
     new Float32Array(items.length * 3)
 
   items.forEach(
-    ([lat, lng, altKm], i) => {
-      const { x, y, z } =
+    ([lat, lng, altKm], index) => {
+      const scenePoint =
         globe.getCoords(
           lat,
           lng,
           altFrac(altKm)
         )
 
-      arr.set([x, y, z], i * 3)
+      arr.set([scenePoint.x, scenePoint.y, scenePoint.z], index * 3)
     }
   )
 
@@ -589,7 +589,7 @@ function getLaunchOrbitGeometry(
     (azimuthDeg * Math.PI) / 180
 
   // Launch-site position vector.
-  const r = {
+  const siteVector = {
     x:
       Math.cos(lat) * Math.cos(lon),
 
@@ -648,27 +648,27 @@ function getLaunchOrbitGeometry(
   /*
    * Orbital angular momentum.
    *
-   * r × v gives the normal vector to the orbital plane.
+   * siteVector × v gives the normal vector to the orbital plane.
    */
-  const h = {
+  const orbitNormal = {
     x:
-      r.y * velocity.z -
-      r.z * velocity.y,
+      siteVector.y * velocity.z -
+      siteVector.z * velocity.y,
 
     y:
-      r.z * velocity.x -
-      r.x * velocity.z,
+      siteVector.z * velocity.x -
+      siteVector.x * velocity.z,
 
     z:
-      r.x * velocity.y -
-      r.y * velocity.x,
+      siteVector.x * velocity.y -
+      siteVector.y * velocity.x,
   }
 
   const hMagnitude =
     Math.sqrt(
-      h.x * h.x +
-      h.y * h.y +
-      h.z * h.z
+      orbitNormal.x * orbitNormal.x +
+      orbitNormal.y * orbitNormal.y +
+      orbitNormal.z * orbitNormal.z
     )
 
   const inclinationRad =
@@ -677,7 +677,7 @@ function getLaunchOrbitGeometry(
         -1,
         Math.min(
           1,
-          h.z / hMagnitude
+          orbitNormal.z / hMagnitude
         )
       )
     )
@@ -692,8 +692,8 @@ function getLaunchOrbitGeometry(
    */
   let raanRad =
     Math.atan2(
-      h.x,
-      -h.y
+      orbitNormal.x,
+      -orbitNormal.y
     )
 
   if (raanRad < 0) {
@@ -706,16 +706,16 @@ function getLaunchOrbitGeometry(
   /*
    * Basis vectors of the orbital plane.
    *
-   * p points toward the ascending node.
-   * q is 90° further around the orbital plane.
+   * nodeVector points toward the ascending node.
+   * perpVector is 90° further around the orbital plane.
    */
-  const p = {
+  const nodeVector = {
     x: Math.cos(raanRad),
     y: Math.sin(raanRad),
     z: 0,
   }
 
-  const q = {
+  const perpVector = {
     x:
       -Math.sin(raanRad) *
       Math.cos(inclinationRad),
@@ -733,14 +733,14 @@ function getLaunchOrbitGeometry(
    * to the launch-site position.
    */
   const pDotR =
-    r.x * p.x +
-    r.y * p.y +
-    r.z * p.z
+    siteVector.x * nodeVector.x +
+    siteVector.y * nodeVector.y +
+    siteVector.z * nodeVector.z
 
   const qDotR =
-    r.x * q.x +
-    r.y * q.y +
-    r.z * q.z
+    siteVector.x * perpVector.x +
+    siteVector.y * perpVector.y +
+    siteVector.z * perpVector.z
 
   const launchTheta =
     Math.atan2(
@@ -856,19 +856,19 @@ function getAscent(
   const ascent = []
 
   for (
-    let n = 0;
-    n <= steps;
-    n++
+    let step = 0;
+    step <= steps;
+    step++
   ) {
-    const t =
-      n / steps
+    const progressFraction =
+      step / steps
 
     /*
      * Smoothstep makes the altitude transition start and
      * finish smoothly.
      */
     const smoothT =
-      t * t * (3 - 2 * t)
+      progressFraction * progressFraction * (3 - 2 * progressFraction)
 
     const theta =
       launchTheta +
@@ -893,7 +893,7 @@ function getAscent(
      * This removes any floating-point discrepancy and makes
      * the ascent visibly originate directly at the pad.
      */
-    if (n === 0) {
+    if (step === 0) {
       ascent.push({
         lat: launchLat,
         lng: launchLng,
@@ -1451,12 +1451,12 @@ export default function SceneViewport({
 
       Object.values(
         shellMeshes.current
-      ).forEach((g) => {
-        globe.scene().remove(g)
+      ).forEach((shellGroup) => {
+        globe.scene().remove(shellGroup)
 
-        g.traverse((o) => {
-          o.geometry?.dispose()
-          o.material?.dispose()
+        shellGroup.traverse((part) => {
+          part.geometry?.dispose()
+          part.material?.dispose()
         })
       })
 
@@ -1520,8 +1520,8 @@ export default function SceneViewport({
       (
         draftParams?.siteId &&
         LAUNCH_SITES.find(
-          (s) =>
-            s.id ===
+          (site) =>
+            site.id ===
             draftParams.siteId
         )
       ) ||
@@ -1553,18 +1553,18 @@ export default function SceneViewport({
     }
 
     globe
-      .objectLat(d => d.lat)
-      .objectLng(d => d.lng)
-      .objectAltitude(d => d.alt)
-      .objectLabel(d => d.name)
-      .objectThreeObject(d =>
-        d.type === 'iss'
+      .objectLat(item => item.lat)
+      .objectLng(item => item.lng)
+      .objectAltitude(item => item.alt)
+      .objectLabel(item => item.name)
+      .objectThreeObject(item =>
+        item.type === 'iss'
           ? makeIssObject()
-          : d.type === 'site'
-            ? makeLaunchSiteModel({ siteId: d.id, active: d.active })
+          : item.type === 'site'
+            ? makeLaunchSiteModel({ siteId: item.id, active: item.active })
             : new THREE.Mesh(
                 new THREE.SphereGeometry(1, 16, 16),
-                new THREE.MeshBasicMaterial({ color: d.color })
+                new THREE.MeshBasicMaterial({ color: item.color })
               )
       )
       .onObjectClick((obj) => {
@@ -1662,34 +1662,34 @@ export default function SceneViewport({
     globe
       .pointsData([])
       .pathPoints(
-        d => d.pts
+        path => path.pts
       )
       .pathPointLat(
-        p => p.lat
+        point => point.lat
       )
       .pathPointLng(
-        p => p.lng
+        point => point.lng
       )
       .pathPointAlt(
-        p => p.alt
+        point => point.alt
       )
       .pathColor(
-        d => d.color
+        path => path.color
       )
       .pathStroke(
-        d => d.stroke
+        path => path.stroke
       )
       .pathDashLength(
-        d =>
-          d.dashLength ?? 1
+        path =>
+          path.dashLength ?? 1
       )
       .pathDashGap(
-        d =>
-          d.dashGap ?? 0
+        path =>
+          path.dashGap ?? 0
       )
       .pathDashAnimateTime(
-        d =>
-          d.dashAnimateTime ?? 0
+        path =>
+          path.dashAnimateTime ?? 0
       )
       .pathTransitionDuration(0)
       .pathResolution(1)
@@ -1748,29 +1748,29 @@ export default function SceneViewport({
     globe
       .pointsData(markers)
       .pointLat(
-        d => d.lat
+        marker => marker.lat
       )
       .pointLng(
-        d => d.lng
+        marker => marker.lng
       )
       .pointAltitude(
-        d => d.alt
+        marker => marker.alt
       )
       .pointLabel(
-        d => d.name
+        marker => marker.name
       )
       .pointRadius(
-        d =>
-          d.type ===
+        marker =>
+          marker.type ===
           'launchsite-interactive'
             ? 1.5
-            : d.type ===
+            : marker.type ===
               'launchsite-selected'
               ? 1.0
               : 0.5
       )
       .pointColor(
-        d => d.color
+        marker => marker.color
       )
       .onPointClick(
         (
@@ -1841,19 +1841,19 @@ export default function SceneViewport({
         }
       )
       .objectLat(
-        d => d.lat
+        item => item.lat
       )
       .objectLng(
-        d => d.lng
+        item => item.lng
       )
       .objectAltitude(
-        d => d.alt
+        item => item.alt
       )
       .objectLabel(
-        d => d.name
+        item => item.name
       )
       .objectThreeObject(
-        d =>
+        item =>
           new THREE.Mesh(
             new THREE.SphereGeometry(
               1,
@@ -1863,7 +1863,7 @@ export default function SceneViewport({
             new THREE.MeshBasicMaterial(
               {
                 color:
-                  d.color,
+                  item.color,
               }
             )
           )
@@ -1871,14 +1871,14 @@ export default function SceneViewport({
 
     missionLayers.current = { paths, objects: [intersectionPoint, ...siteModels] }
     globe
-      .objectThreeObject(d =>
-        d.type === 'iss'
+      .objectThreeObject(item =>
+        item.type === 'iss'
           ? makeIssObject()
-          : d.type === 'site'
-            ? makeLaunchSiteModel({ siteId: d.id, active: d.active })
+          : item.type === 'site'
+            ? makeLaunchSiteModel({ siteId: item.id, active: item.active })
             : new THREE.Mesh(
                 new THREE.SphereGeometry(1, 16, 16),
-                new THREE.MeshBasicMaterial({ color: d.color })
+                new THREE.MeshBasicMaterial({ color: item.color })
               )
       )
       .onObjectClick((obj) => {
@@ -1908,7 +1908,7 @@ export default function SceneViewport({
 
     const site =
       LAUNCH_SITES.find(
-        s => s.id === siteId
+        site => site.id === siteId
       )
 
     if (!globe || !site) {
@@ -1963,11 +1963,11 @@ export default function SceneViewport({
 
     const coords =
       ascent.map(
-        p =>
+        point =>
           globe.getCoords(
-            p.lat,
-            p.lng,
-            p.alt
+            point.lat,
+            point.lng,
+            point.alt
           )
       )
 
@@ -2108,14 +2108,14 @@ export default function SceneViewport({
         zoomOutFraction: 0.2, // how much of one orbit the pull-back takes (0.2 = a fifth)
       },
     }
-    // Blend between two camera setups; s goes 0 → 1
-    const lerpView = (a, b, s) => ({
-      distance: a.distance + (b.distance - a.distance) * s,
-      pitch: a.pitch + (b.pitch - a.pitch) * s,
-      yaw: a.yaw + (b.yaw - a.yaw) * s,
-      lookBlend: a.lookBlend + (b.lookBlend - a.lookBlend) * s,
-      smoothingMs: (a.smoothingMs ?? 350) + ((b.smoothingMs ?? 350) - (a.smoothingMs ?? 350)) * s,
-      centerLook: a.centerLook || b.centerLook,
+    // Blend between two camera setups; blend goes 0 → 1
+    const lerpView = (fromView, toView, blend) => ({
+      distance: fromView.distance + (toView.distance - fromView.distance) * blend,
+      pitch: fromView.pitch + (toView.pitch - fromView.pitch) * blend,
+      yaw: fromView.yaw + (toView.yaw - fromView.yaw) * blend,
+      lookBlend: fromView.lookBlend + (toView.lookBlend - fromView.lookBlend) * blend,
+      smoothingMs: (fromView.smoothingMs ?? 350) + ((toView.smoothingMs ?? 350) - (fromView.smoothingMs ?? 350)) * blend,
+      centerLook: fromView.centerLook || toView.centerLook,
     })
     const FOLLOW_SMOOTHING_MS = 350 // default for views that don't set smoothingMs
     const UP_SMOOTHING_MS = 500 // how gently the screen's "up" direction turns to match the satellite's local up
@@ -2147,9 +2147,9 @@ export default function SceneViewport({
       following = false
       restoreControls() // the same click/drag now works on the globe as usual
     }
-    const onWheel = (e) => {
+    const onWheel = (event) => {
       if (!following) return
-      zoomFactor *= e.deltaY > 0 ? 1.12 : 1 / 1.12
+      zoomFactor *= event.deltaY > 0 ? 1.12 : 1 / 1.12
     }
     viewEl?.addEventListener('pointerdown', stopFollowing)
     viewEl?.addEventListener('wheel', onWheel, { passive: true })
@@ -2160,7 +2160,7 @@ export default function SceneViewport({
 
     const followCamera = (position, direction, view, dtMs) => {
       if (!following) return
-      const k = 1 - Math.exp(-dtMs / (view.smoothingMs ?? FOLLOW_SMOOTHING_MS)) // fraction of the gap to close this frame
+      const easeFraction = 1 - Math.exp(-dtMs / (view.smoothingMs ?? FOLLOW_SMOOTHING_MS)) // fraction of the gap to close this frame
 
       // Overview: camera straight out above the satellite, looking at Earth's centre,
       // so the satellite sits in the middle with the whole planet behind it
@@ -2171,8 +2171,8 @@ export default function SceneViewport({
           globeRadius * 8
         )
         desired.copy(position).normalize().multiplyScalar(distance)
-        camera.position.lerp(desired, k)
-        lookTarget.lerp(earthCentre, k)
+        camera.position.lerp(desired, easeFraction)
+        lookTarget.lerp(earthCentre, easeFraction)
         camera.lookAt(lookTarget)
         return
       }
@@ -2204,7 +2204,7 @@ export default function SceneViewport({
 
       const distance = THREE.MathUtils.clamp(view.distance * zoomFactor, ZOOM_LIMITS.min, ZOOM_LIMITS.max)
       desired.copy(position).addScaledVector(offset, distance)
-      camera.position.lerp(desired, k)
+      camera.position.lerp(desired, easeFraction)
 
       // Aim at the object, or partway from it towards Earth's centre (keeps the planet in frame)
       const aim = desired.copy(position).multiplyScalar(1 - (view.lookBlend ?? 0))
@@ -2212,7 +2212,7 @@ export default function SceneViewport({
         // Locked on: no easing on the aim, so the object stays dead centre however fast it moves
         lookTarget.copy(aim)
       } else {
-        lookTarget.lerp(aim, k)
+        lookTarget.lerp(aim, easeFraction)
       }
       camera.lookAt(lookTarget)
     }
@@ -2251,53 +2251,53 @@ export default function SceneViewport({
               ASCENT_RATE
           )
 
-        const f =
+        const exactIndex =
           progress *
           (coords.length - 1)
 
-        const i =
+        const pointIndex =
           Math.min(
-            Math.floor(f),
+            Math.floor(exactIndex),
             coords.length - 1
           )
 
-        const k =
-          f - i
+        const segmentFraction =
+          exactIndex - pointIndex
 
-        const a =
-          coords[i]
+        const fromPoint =
+          coords[pointIndex]
 
-        const b =
+        const toPoint =
           coords[
             Math.min(
-              i + 1,
+              pointIndex + 1,
               coords.length - 1
             )
           ]
 
-        const x =
-          a.x +
-          (b.x - a.x) *
-            k
+        const rocketX =
+          fromPoint.x +
+          (toPoint.x - fromPoint.x) *
+            segmentFraction
 
-        const y =
-          a.y +
-          (b.y - a.y) *
-            k
+        const rocketY =
+          fromPoint.y +
+          (toPoint.y - fromPoint.y) *
+            segmentFraction
 
-        const z =
-          a.z +
-          (b.z - a.z) *
-            k
+        const rocketZ =
+          fromPoint.z +
+          (toPoint.z - fromPoint.z) *
+            segmentFraction
 
         rocket.position.set(
-          x,
-          y,
-          z
+          rocketX,
+          rocketY,
+          rocketZ
         )
         // Point the nose along the direction of travel (straight up at liftoff)
-        const lookAhead = coords[Math.min(i + 4, coords.length - 1)]
-        heading.set(lookAhead.x - x, lookAhead.y - y, lookAhead.z - z)
+        const lookAhead = coords[Math.min(pointIndex + 4, coords.length - 1)]
+        heading.set(lookAhead.x - rocketX, lookAhead.y - rocketY, lookAhead.z - rocketZ)
         if (heading.lengthSq() > 1e-9) {
           targetQuat.setFromUnitVectors(UP, heading.normalize())
           rocket.quaternion.slerp(targetQuat, Math.min(1, camDt / 120)) // ease the turn
@@ -2312,26 +2312,26 @@ export default function SceneViewport({
             .position
 
         for (
-          let n = 0;
-          n <= i;
-          n++
+          let trailIndex = 0;
+          trailIndex <= pointIndex;
+          trailIndex++
         ) {
           pos.setXYZ(
-            n,
-            coords[n].x,
-            coords[n].y,
-            coords[n].z
+            trailIndex,
+            coords[trailIndex].x,
+            coords[trailIndex].y,
+            coords[trailIndex].z
           )
         }
 
         pos.setXYZ(
           Math.min(
-            i + 1,
+            pointIndex + 1,
             coords.length - 1
           ),
-          x,
-          y,
-          z
+          rocketX,
+          rocketY,
+          rocketZ
         )
 
         pos.needsUpdate = true
@@ -2339,7 +2339,7 @@ export default function SceneViewport({
         trailGeom.setDrawRange(
           0,
           Math.min(
-            i + 2,
+            pointIndex + 2,
             coords.length
           )
         )
@@ -2535,15 +2535,15 @@ export default function SceneViewport({
     const ascent = flightRef.current.ascent
     if (!ascent || ascent.length < 2) return
 
-    const win = windows?.find(w => w.id === selectedId) ?? windows?.[0]
+    const win = windows?.find(launchWindow => launchWindow.id === selectedId) ?? windows?.[0]
     const start = win ? new Date(win.opensAt) : new Date()
 
     // ascent points store altitude as a fraction of Earth's radius, so convert back to km
-    const points = ascent.map((p, i) => ({
-      t_sec: (i / (ascent.length - 1)) * ASCENT_SEC,
-      lat: p.lat,
-      lon: p.lng,
-      alt_km: (p.alt / ALT_SCALE) * EARTH_R,
+    const points = ascent.map((point, index) => ({
+      t_sec: (index / (ascent.length - 1)) * ASCENT_SEC,
+      lat: point.lat,
+      lon: point.lng,
+      alt_km: (point.alt / ALT_SCALE) * EARTH_R,
     }))
 
     const ctrl = new AbortController()
@@ -2554,7 +2554,7 @@ export default function SceneViewport({
       body: JSON.stringify({ start: start.toISOString(), points, radius_km: DEBRIS_RADIUS_KM }),
       signal: ctrl.signal,
     })
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`path check failed: ${r.status}`))))
+      .then(response => (response.ok ? response.json() : Promise.reject(new Error(`path check failed: ${response.status}`))))
       .then(data => setCollision({ status: 'done', ...data }))
       .catch(err => {
         if (err.name !== 'AbortError') setCollision({ status: 'error', message: err.message })
@@ -2580,10 +2580,10 @@ export default function SceneViewport({
 
             applyLayers()
           })
-          .catch((e) =>
+          .catch((error) =>
             console.warn(
               'ISS position unavailable:',
-              e.message
+              error.message
             )
           )
 
@@ -2600,10 +2600,10 @@ export default function SceneViewport({
 
             applyLayers()
           })
-          .catch((e) =>
+          .catch((error) =>
             console.warn(
               'ISS track unavailable:',
-              e.message
+              error.message
             )
           )
 
@@ -2652,7 +2652,7 @@ export default function SceneViewport({
 
     const win =
       windows?.find(
-        w => w.id === selectedId
+        launchWindow => launchWindow.id === selectedId
       ) ??
       windows?.[0]
 
@@ -2695,12 +2695,12 @@ export default function SceneViewport({
           ctrl.signal,
       }
     )
-      .then(r =>
-        r.ok
-          ? r.json()
+      .then(response =>
+        response.ok
+          ? response.json()
           : Promise.reject(
               new Error(
-                `debris request failed: ${r.status}`
+                `debris request failed: ${response.status}`
               )
             )
       )
@@ -2785,10 +2785,10 @@ export default function SceneViewport({
     ) {
       const near =
         debris.nearby.map(
-          d => [
-            d.lat,
-            d.lon,
-            d.alt_km,
+          debrisObject => [
+            debrisObject.lat,
+            debrisObject.lon,
+            debrisObject.alt_km,
           ]
         )
 
@@ -2811,9 +2811,9 @@ export default function SceneViewport({
       scene.remove(group)
 
       group.traverse(
-        o => {
-          o.geometry?.dispose()
-          o.material?.dispose()
+        part => {
+          part.geometry?.dispose()
+          part.material?.dispose()
         }
       )
     }
@@ -2827,8 +2827,8 @@ export default function SceneViewport({
     if (!collision) return null
     if (collision.status === 'checking') return { color: '#90a4ae', text: 'Checking ascent path for debris…' }
     if (collision.status === 'error') return { color: '#ffb74d', text: 'Debris check unavailable', detail: collision.message }
-    const c = collision.closest
-    const detail = c ? `Closest: ${c.name} · ${c.distance_km} km at T+${Math.round(c.t_sec)} s` : ''
+    const closest = collision.closest
+    const detail = closest ? `Closest: ${closest.name} · ${closest.distance_km} km at T+${Math.round(closest.t_sec)} s` : ''
     return collision.clear
       ? { color: '#4caf50', text: `Clear: nothing within ${collision.radius_km} km of the ascent path`, detail }
       : { color: '#ff1744', text: `Warning: ${collision.conflict_count} object(s) within ${collision.radius_km} km`, detail }

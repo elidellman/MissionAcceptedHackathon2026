@@ -299,9 +299,9 @@ def create_app(test_config=None):
         if reachable:
 
             upcoming = [
-                w
-                for w in result["windows"]
-                if now <= w["start"] < horizon
+                window
+                for window in result["windows"]
+                if now <= window["start"] < horizon
             ]
 
         else:
@@ -322,8 +322,8 @@ def create_app(test_config=None):
             site["lat"],
             site["lon"],
             [
-                w["start"]
-                for w in upcoming
+                window["start"]
+                for window in upcoming
             ]
         )
 
@@ -333,7 +333,7 @@ def create_app(test_config=None):
         windows = []
 
 
-        for w, rating in zip(
+        for orbital_window, rating in zip(
             upcoming,
             weather
         ):
@@ -347,24 +347,24 @@ def create_app(test_config=None):
                     f"{site_id}_"
                     f"{orbit}_"
                     f"{int(altitude_km)}_"
-                    f"{w['start'].strftime('%Y%m%dT%H%M%S')}"
+                    f"{orbital_window['start'].strftime('%Y%m%dT%H%M%S')}"
                 ),
 
                 "opens_at": iso_utc(
-                    w["start"]
+                    orbital_window["start"]
                 ),
 
                 "duration_min": round(
                     (
-                        w["end"] -
-                        w["start"]
+                        orbital_window["end"] -
+                        orbital_window["start"]
                     ).total_seconds() / 60
                 ),
 
                 "weather": rating,
             }
-            if "peak" in w:  # advanced (RAAN) mode has an exact alignment time
-                window["peak_at"] = iso_utc(w["peak"])
+            if "peak" in orbital_window:  # advanced (RAAN) mode has an exact alignment time
+                window["peak_at"] = iso_utc(orbital_window["peak"])
             windows.append(window)
 
         return jsonify({
@@ -487,10 +487,10 @@ def create_app(test_config=None):
 
         for step in range(61):
 
-            f = step / 60
+            progress = step / 60
 
-            d = (
-                downrange_km * f
+            angular_distance = (
+                downrange_km * progress
             ) / 6371
 
 
@@ -498,13 +498,13 @@ def create_app(test_config=None):
 
                 math.sin(lat0)
                 *
-                math.cos(d)
+                math.cos(angular_distance)
 
                 +
 
                 math.cos(lat0)
                 *
-                math.sin(d)
+                math.sin(angular_distance)
                 *
                 math.cos(heading)
             )
@@ -517,11 +517,11 @@ def create_app(test_config=None):
 
                     math.sin(heading)
                     *
-                    math.sin(d)
+                    math.sin(angular_distance)
                     *
                     math.cos(lat0),
 
-                    math.cos(d)
+                    math.cos(angular_distance)
                     -
                     math.sin(lat0)
                     *
@@ -552,7 +552,7 @@ def create_app(test_config=None):
                     altitude_km
                     *
                     math.sin(
-                        f *
+                        progress *
                         math.pi /
                         2
                     ),
@@ -731,8 +731,8 @@ def create_app(test_config=None):
             points = [
 
                 {
-                    k: float(p[k])
-                    for k in (
+                    field: float(point[field])
+                    for field in (
                         't_sec',
                         'lat',
                         'lon',
@@ -740,7 +740,7 @@ def create_app(test_config=None):
                     )
                 }
 
-                for p in data['points']
+                for point in data['points']
 
             ]
 

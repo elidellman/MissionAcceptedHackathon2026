@@ -25,7 +25,7 @@ export const ENDPOINTS = {
   trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`,
 }
 
-const delay = (ms) => new Promise((r) => setTimeout(r, ms))
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function getJson(url) {
   const res = await fetch(url)
@@ -109,18 +109,18 @@ export async function fetchTrajectory(windowId) {
 
 // ── snake_case (backend) → camelCase (frontend) ────────────────────────────
 
-const toSite = (s) => ({ id: s.id, name: s.name, lat: s.lat, lon: s.lon })
+const toSite = (site) => ({ id: site.id, name: site.name, lat: site.lat, lon: site.lon })
 
-const toMission = (m) => ({
-  name: m.name,
-  vehicle: m.vehicle,
-  launchSite: toSite(m.launch_site),
-  targetOrbit: m.target_orbit,
-  inclinationDeg: m.inclination_deg,
-  altitudeKm: m.altitude_km,
-  azimuthDeg: m.azimuth_deg,
-  raanDeg: m.raan_deg,
-  vehicleDurationSec: m.vehicle_duration_sec,
+const toMission = (mission) => ({
+  name: mission.name,
+  vehicle: mission.vehicle,
+  launchSite: toSite(mission.launch_site),
+  targetOrbit: mission.target_orbit,
+  inclinationDeg: mission.inclination_deg,
+  altitudeKm: mission.altitude_km,
+  azimuthDeg: mission.azimuth_deg,
+  raanDeg: mission.raan_deg,
+  vehicleDurationSec: mission.vehicle_duration_sec,
 })
 
 // Weather arrives either as a plain rating ('green' | 'yellow' | 'red') or as an object
@@ -136,13 +136,13 @@ const toWeather = (weather) =>
     ? { rating: weather, description: WEATHER_TEXT[weather] ?? 'Weather information unavailable.' }
     : weather ?? null
 
-const toWindow = (w) => ({
-  id: w.id,
-  opensAt: w.opens_at,
-  peakAt: w.peak_at,
-  insertionAt: w.insertion_at,
-  durationMin: w.duration_min,
-  weather: toWeather(w.weather),
+const toWindow = (launchWindow) => ({
+  id: launchWindow.id,
+  opensAt: launchWindow.opens_at,
+  peakAt: launchWindow.peak_at,
+  insertionAt: launchWindow.insertion_at,
+  durationMin: launchWindow.duration_min,
+  weather: toWeather(launchWindow.weather),
 })
 
-const toPoint = (p) => ({ tSec: p.t_sec, lat: p.lat, lon: p.lon, altKm: p.alt_km })
+const toPoint = (point) => ({ tSec: point.t_sec, lat: point.lat, lon: point.lon, altKm: point.alt_km })

@@ -75,10 +75,10 @@ function useSimulationClock(launchIso, simStartedAtMs, timeScale) {
     let last = performance.now()
 
     const id = setInterval(() => {
-      const t = performance.now()
+      const tickTime = performance.now()
       // dt: real milliseconds since the previous tick
-      const dt = t - last
-      last = t
+      const dt = tickTime - last
+      last = tickTime
 
       setSim((prev) => ({
         key: simStartedAtMs,
@@ -161,7 +161,7 @@ export default function HudOverlay({
     })
 
   // selectedWindow: the window the user clicked (undefined if none is selected)
-  const selectedWindow = windows.find((w) => w.id === selectedId)
+  const selectedWindow = windows.find((launchWindow) => launchWindow.id === selectedId)
 
   // simStartedAtMs: identifies the current run. Only counts while the simulated window is
   // still the selected one; the page clears `simulation` whenever a new time is picked.
@@ -380,7 +380,7 @@ export default function HudOverlay({
       {/* Bottom: launch windows list */}
       <Paper className={`${classes.panel} ${classes.bottom}`} p="sm">
         <UnstyledButton
-          onClick={() => setWindowsOpen((o) => !o)}
+          onClick={() => setWindowsOpen((wasOpen) => !wasOpen)}
           aria-expanded={windowsOpen}
           style={{ display: 'block', width: '100%' }}
         >
@@ -404,52 +404,52 @@ export default function HudOverlay({
 
         {windowsOpen && windows.length > 0 && (
           <Group gap="xs" wrap="nowrap" mt={6} className={classes.windowRow}>
-            {windows.map((w) => {
-            const wx = WEATHER[w.weather?.rating] ?? WEATHER.yellow
+            {windows.map((launchWindow) => {
+            const weatherStyle = WEATHER[launchWindow.weather?.rating] ?? WEATHER.yellow
               return (
                 // A div (not a <button>) because it contains the Simulate button,
                 // and a button can't be nested inside another button.
                 <Paper
-                  key={w.id}
+                  key={launchWindow.id}
                   component="div"
                   role="button"
                   tabIndex={0}
-                  onClick={() => handleSelect(w.id)}
-                  onKeyDown={(e) => {
+                  onClick={() => handleSelect(launchWindow.id)}
+                  onKeyDown={(event) => {
                     // ignore key presses that came from the Simulate button inside the card
-                    if (e.target !== e.currentTarget) return
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      handleSelect(w.id)
+                    if (event.target !== event.currentTarget) return
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleSelect(launchWindow.id)
                     }
                   }}
                   className={classes.windowCard}
-                  data-selected={w.id === selectedId || undefined}
+                  data-selected={launchWindow.id === selectedId || undefined}
                   p="xs"
                 >
                   <Stack gap={2} align="flex-start">
                     <Text size="sm" fw={600}>
-                      {new Date(w.opensAt).toLocaleString([], {
+                      {new Date(launchWindow.opensAt).toLocaleString([], {
                         weekday: 'short',
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {w.durationMin} min
+                      {launchWindow.durationMin} min
                     </Text>
                     <Group>
-                    <Badge size="xs" color={wx.color}>
-                      {wx.label}
+                    <Badge size="xs" color={weatherStyle.color}>
+                      {weatherStyle.label}
                     </Badge>
 
                     {/* No simulating a launch the weather rules out */}
-                    {w.weather?.rating !== 'red' && (
+                    {launchWindow.weather?.rating !== 'red' && (
                       <Button
                         size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSimulate(w.id)
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleSimulate(launchWindow.id)
                         }}
                       >
                         Simulate
@@ -458,23 +458,23 @@ export default function HudOverlay({
                   </Group>
 
                   {/* Weather reason, collapsed by default */}
-                  {w.weather?.description && (
+                  {launchWindow.weather?.description && (
                     <>
                       <UnstyledButton
-                        onClick={(e) => {
-                          e.stopPropagation() // don't select the window
-                          toggleReason(w.id)
+                        onClick={(event) => {
+                          event.stopPropagation() // don't select the window
+                          toggleReason(launchWindow.id)
                         }}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        aria-expanded={openReasons.has(w.id)}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        aria-expanded={openReasons.has(launchWindow.id)}
                       >
                         <Text size="xs" c="dimmed" td="underline">
-                          Why? {openReasons.has(w.id) ? '▴' : '▾'}
+                          Why? {openReasons.has(launchWindow.id) ? '▴' : '▾'}
                         </Text>
                       </UnstyledButton>
-                      {openReasons.has(w.id) && (
+                      {openReasons.has(launchWindow.id) && (
                         <Text size="xs" c="dimmed" maw={220}>
-                          {w.weather.description}
+                          {launchWindow.weather.description}
                         </Text>
                       )}
                     </>

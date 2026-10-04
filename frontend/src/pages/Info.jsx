@@ -47,14 +47,14 @@ export default function Info() {
         <Stack gap="sm">
           <Title order={2} size="h3">Target orbits</Title>
           <SimpleGrid cols={{ base: 1, sm: 3 }}>
-            {ORBITS.map((o) => (
-              <Card key={o.name} withBorder padding="lg">
+            {ORBITS.map((orbit) => (
+              <Card key={orbit.name} withBorder padding="lg">
                 <Group justify="space-between" mb="xs">
-                  <Text fw={800} size="xl">{o.name}</Text>
-                  <Badge variant="light">{o.inclination}</Badge>
+                  <Text fw={800} size="xl">{orbit.name}</Text>
+                  <Badge variant="light">{orbit.inclination}</Badge>
                 </Group>
-                <Text size="sm" fw={600}>{o.full}</Text>
-                <Text size="sm" c="dimmed" mt={4}>{o.body}</Text>
+                <Text size="sm" fw={600}>{orbit.full}</Text>
+                <Text size="sm" c="dimmed" mt={4}>{orbit.body}</Text>
               </Card>
             ))}
           </SimpleGrid>

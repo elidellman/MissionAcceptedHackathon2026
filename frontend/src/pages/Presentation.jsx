@@ -95,11 +95,11 @@ export default function Presentation() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          const idx = Number(e.target.dataset.index)
-          if (e.isIntersecting) {
+        entries.forEach((entry) => {
+          const idx = Number(entry.target.dataset.index)
+          if (entry.isIntersecting) {
             setVisible((prev) => (prev.has(idx) ? prev : new Set(prev).add(idx)))
-            if (e.intersectionRatio > 0.55) setActive(idx)
+            if (entry.intersectionRatio > 0.55) setActive(idx)
           }
         })
       },
@@ -127,19 +127,19 @@ export default function Presentation() {
     }
   }, [])
 
-  const goTo = useCallback((i) => {
-    const idx = Math.max(0, Math.min(SLIDES.length - 1, i))
+  const goTo = useCallback((slideIndex) => {
+    const idx = Math.max(0, Math.min(SLIDES.length - 1, slideIndex))
     sectionRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
   // Keyboard navigation
   useEffect(() => {
-    const onKey = (e) => {
-      if (e.target.closest?.('input, textarea, select')) return
-      if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); goTo(active + 1) }
-      if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); goTo(active - 1) }
-      if (e.key === 'Home') { e.preventDefault(); goTo(0) }
-      if (e.key === 'End') { e.preventDefault(); goTo(SLIDES.length - 1) }
+    const onKey = (event) => {
+      if (event.target.closest?.('input, textarea, select')) return
+      if (['ArrowDown', 'PageDown', ' '].includes(event.key)) { event.preventDefault(); goTo(active + 1) }
+      if (['ArrowUp', 'PageUp'].includes(event.key)) { event.preventDefault(); goTo(active - 1) }
+      if (event.key === 'Home') { event.preventDefault(); goTo(0) }
+      if (event.key === 'End') { event.preventDefault(); goTo(SLIDES.length - 1) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -155,13 +155,13 @@ export default function Presentation() {
 
       {/* Sections */}
       <div ref={scrollerRef} className={classes.scroller}>
-        {SLIDES.map((slide, i) => (
+        {SLIDES.map((slide, slideIndex) => (
           <section
             key={slide.id}
-            ref={(el) => (sectionRefs.current[i] = el)}
-            data-index={i}
+            ref={(el) => (sectionRefs.current[slideIndex] = el)}
+            data-index={slideIndex}
             data-transition={slide.transition}
-            data-visible={visible.has(i)}
+            data-visible={visible.has(slideIndex)}
             className={classes.section}
           >
             <div className={classes.inner}>
@@ -173,14 +173,14 @@ export default function Presentation() {
 
       {/* Navigation */}
       <nav className={classes.dots} aria-label="Presentation sections">
-        {SLIDES.map((s, i) => (
+        {SLIDES.map((dotSlide, slideIndex) => (
           <button
-            key={s.id}
+            key={dotSlide.id}
             type="button"
             className={classes.dot}
-            data-active={i === active}
-            onClick={() => goTo(i)}
-            aria-label={`Go to section ${i + 1}`}
+            data-active={slideIndex === active}
+            onClick={() => goTo(slideIndex)}
+            aria-label={`Go to section ${slideIndex + 1}`}
           />
         ))}
       </nav>

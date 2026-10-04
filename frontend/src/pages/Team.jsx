@@ -21,14 +21,14 @@ export default function Team() {
         </Stack>
 
         <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="md">
-          {TEAM.map((m) => (
-            <Card key={m.name} withBorder padding="lg">
+          {TEAM.map((member) => (
+            <Card key={member.name} withBorder padding="lg">
               <Stack align="center" gap="xs">
                 <Avatar size={64} radius="xl" color="orange" variant="light">
-                  {m.name.slice(0, 2).toUpperCase()}
+                  {member.name.slice(0, 2).toUpperCase()}
                 </Avatar>
-                <Text fw={700}>{m.name}</Text>
-                <Text size="sm" c="dimmed">{m.role}</Text>
+                <Text fw={700}>{member.name}</Text>
+                <Text size="sm" c="dimmed">{member.role}</Text>
               </Stack>
             </Card>
           ))}
