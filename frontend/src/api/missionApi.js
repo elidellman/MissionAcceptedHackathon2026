@@ -1,5 +1,5 @@
 /**
- * missionApi.js — THE ONLY PLACE THE FRONTEND TALKS TO THE BACKEND.
+ * missionApi.js — THE ONLY PLACE THE FRONTEND TALKS TO THE 
  *
  * Backend team: every endpoint the frontend expects is listed in ENDPOINTS below,
  * and the exact JSON shapes are in /HANDOFF.md (repo root).
@@ -17,14 +17,14 @@ import {
 // false = real Flask backend (run `flask --app flaskr run` in backend/).
 // Set back to true to demo without the backend: the app then uses fake data from mockData.js.
 export const USE_MOCK = false
-
+const API_URL = import.meta.env.VITE_API_URL || ''
 export const ENDPOINTS = {
-  test: '/api/test',
-  launchSites: '/api/launch-sites',
-  launchWindows: '/api/launch-windows', // ?site_id=&orbit=&inclination_deg=&altitude_km=&days=
-  trajectory: (windowId) => `/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`,
+  test: `${API_URL}/api/test`,
+  launchSites: `${API_URL}/api/launch-sites`,
+  launchWindows: `${API_URL}/api/launch-windows`,
+  trajectory: (windowId) =>
+    `${API_URL}/api/launch-windows/${encodeURIComponent(windowId)}/trajectory`,
 }
-
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function getJson(url) {

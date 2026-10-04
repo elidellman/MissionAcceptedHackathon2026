@@ -5,11 +5,11 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Flask, jsonify, request
-from backend.Calculations import calculate_launch_windows
-from backend.lib_Calculations import LaunchSites, OrbitTypes, get_plane_intersections
-from backend.weather import rate_windows
-from backend.debris import screen, screen_path
-
+from Calculations import calculate_launch_windows
+from lib_Calculations import LaunchSites, OrbitTypes, get_plane_intersections
+from weather import rate_windows
+from debris import screen, screen_path
+from flask_cors import CORS
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Frontend ↔ backend names
@@ -67,7 +67,7 @@ def create_app(test_config=None):
         __name__,
         instance_relative_config=True
     )
-
+    CORS(app, origins=["https://elidellman.github.io"])
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(
@@ -112,7 +112,7 @@ def create_app(test_config=None):
 
         data = request.get_json()
 
-        from backend.integration import generate_launch_windows_with_weather
+        from integration import generate_launch_windows_with_weather
 
         result = generate_launch_windows_with_weather(
             launch_site=data["launch_site"],

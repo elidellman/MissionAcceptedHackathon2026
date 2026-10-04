@@ -1,6 +1,6 @@
-from backend.Calculations import calculate_launch_windows
+from Calculations import calculate_launch_windows
 
-from backend.flaskr.weather.weatherApi import (
+from flaskr.weather.weatherApi import (
     check_orbital_windows
 )
 

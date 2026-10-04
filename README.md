@@ -45,7 +45,7 @@ From the **project root** (not inside `backend/`):
 
 ```bash
 pip install -r requirements.txt
-flask --app backend.flaskr run --debug
+flask --app flaskr run --debug
 ```
 
 The API runs at `http://127.0.0.1:5000`. Open `http://127.0.0.1:5000/api/test` to check it's up.

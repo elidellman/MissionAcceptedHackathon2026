@@ -204,7 +204,7 @@ def _launch_rules(lat, lon):
         return cached[1]
 
     # Imported here so a missing library (pandas, openmeteo-requests…) only disables this layer
-    from backend.flaskr.weather import weatherApi
+    from flaskr.weather import weatherApi
 
     forecast = weatherApi.get_weather_forecast(lat, lon, days=16)
     results = {}

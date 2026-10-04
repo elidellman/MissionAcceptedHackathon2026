@@ -1,8 +1,8 @@
 import time
 from datetime import datetime, timedelta, timezone
 
-from backend.launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
-from backend.lib_Calculations import (
+from launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
+from lib_Calculations import (
     OrbitTypes,
     get_Azimuth,
     get_AdjustedAzimuth,
