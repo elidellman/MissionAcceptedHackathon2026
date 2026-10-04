@@ -1,12 +1,12 @@
 .header {
-  background: rgba(10, 12, 20, 0.85);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 7, 12, 0.7);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .logoDot {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--mantine-color-orange-5);
   box-shadow: 0 0 12px var(--mantine-color-orange-5);
@@ -16,8 +16,9 @@
   padding: 6px 12px;
   border-radius: var(--mantine-radius-sm);
   color: var(--mantine-color-dimmed);
-  font-size: var(--mantine-font-size-sm);
+  font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0.01em;
   text-decoration: none;
   transition: color 120ms, background 120ms;
 }

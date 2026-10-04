@@ -26,6 +26,12 @@ SITES = {
         "key": "Nova-Scotia",
         "name": "Spaceport Nova Scotia"
     },
+    "vandenberg": {"key": "Vandenberg", "name": "Vandenberg SLC-4E"},
+    "wallops": {"key": "Wallops", "name": "Wallops Pad 0A"},
+    "kourou": {"key": "Kourou", "name": "Guiana Space Centre (Kourou)"},
+    "baikonur": {"key": "Baikonur", "name": "Baikonur Cosmodrome"},
+    "tanegashima": {"key": "Tanegashima", "name": "Tanegashima Space Center"},
+    "starbase": {"key": "Starbase", "name": "SpaceX Starbase"},
 }
 
 ORBITS = {

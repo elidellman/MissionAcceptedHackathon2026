@@ -39,6 +39,30 @@ LaunchSites = {
     "Nova-Scotia": {
         "latitude": 45.3031,
         "longitude": -60.9828
+    },
+    "Vandenberg": {             # SLC-4E, California
+        "latitude": 34.6321,
+        "longitude": -120.6106
+    },
+    "Wallops": {                # Pad 0A, Virginia
+        "latitude": 37.8337,
+        "longitude": -75.4881
+    },
+    "Kourou": {                 # Guiana Space Centre ELA-3, French Guiana
+        "latitude": 5.2390,
+        "longitude": -52.7680
+    },
+    "Baikonur": {               # Site 1/5, Kazakhstan
+        "latitude": 45.9200,
+        "longitude": 63.3420
+    },
+    "Tanegashima": {            # Yoshinobu complex, Japan
+        "latitude": 30.4000,
+        "longitude": 130.9770
+    },
+    "Starbase": {               # SpaceX Starbase, Texas
+        "latitude": 25.9970,
+        "longitude": -97.1570
     }
 }
 

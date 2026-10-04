@@ -69,6 +69,41 @@ def get_ns_launches():
     return launches
 
 
+# Words that identify each site in The Space Devs pad location names
+SITE_LOCATION_WORDS = {
+    "CapeCanaveral": ["Cape Canaveral", "Kennedy Space Center"],
+    "Nova-Scotia": ["Nova Scotia", "Canso"],
+    "Vandenberg": ["Vandenberg"],
+    "Wallops": ["Wallops"],
+    "Kourou": ["Guiana", "Kourou"],
+    "Baikonur": ["Baikonur"],
+    "Tanegashima": ["Tanegashima"],
+    "Starbase": ["Starbase", "Boca Chica"],
+}
+
+
+def get_all_upcoming_launches():
+    """Every upcoming launch (one request), each with its pad location name."""
+    url = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/"
+    response = requests.get(url, params={"format": "json", "limit": 100}, timeout=15)
+    response.raise_for_status()
+    return [
+        {
+            "name": launch["name"],
+            "location": launch["pad"]["location"]["name"],
+            "window_start": parse_time(launch["window_start"]),
+            "window_end": parse_time(launch["window_end"]),
+        }
+        for launch in response.json()["results"]
+    ]
+
+
+def launches_at_site(all_launches, launch_site):
+    """The launches from get_all_upcoming_launches() that use this site."""
+    words = SITE_LOCATION_WORDS.get(launch_site, [])
+    return [launch for launch in all_launches if any(word in launch["location"] for word in words)]
+
+
 def windows_overlap(start1, end1, start2, end2):
     return start1 < end2 and start2 < end1
 

@@ -27,7 +27,7 @@ export default function Layout() {
           <UnstyledButton component={NavLink} to={ROUTES.home.path} onClick={close}>
             <Group gap={8}>
               <span className={classes.logoDot} />
-              <Text fw={800} size="lg" lts={0.5}>
+              <Text fw={700} size="sm" lts={2.5}>
                 MISSION CONTROL
               </Text>
             </Group>

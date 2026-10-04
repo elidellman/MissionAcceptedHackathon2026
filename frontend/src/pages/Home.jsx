@@ -9,7 +9,7 @@ const FEATURES = [
   {
     icon: '⏱️',
     title: 'Real launch windows',
-    body: 'Calculated from the launch site, the target orbit (LEO, Polar or SSO) and Earth’s rotation, avoiding launches already scheduled at the site.',
+    body: 'For eight launch sites worldwide, calculated from the site, the target orbit (LEO, Polar or SSO) and Earth’s rotation, avoiding launches already scheduled there.',
   },
   {
     icon: '🌦️',
@@ -19,7 +19,7 @@ const FEATURES = [
   {
     icon: '🚀',
     title: 'Launch simulation',
-    body: 'Watch the rocket climb to orbit and release its satellite, with a camera that follows the flight.',
+    body: 'A realistic flight: stage separation, fairing jettison, the booster landing back on land or on a drone ship, and satellite release, with a timeline to pause and jump to any moment.',
   },
   {
     icon: '🛰️',
@@ -34,7 +34,7 @@ const FEATURES = [
   {
     icon: '📡',
     title: 'Live feeds',
-    body: 'A live pad camera at Cape Canaveral, live weather over Spaceport Nova Scotia and NASA’s video from the ISS.',
+    body: 'A live pad camera at Cape Canaveral, live weather maps over the other sites and NASA’s video from the ISS.',
   },
 ]
 

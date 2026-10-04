@@ -33,4 +33,10 @@ export const VIEWING_SPOTS = {
       distanceKm: 7,
     },
   ],
+  wallops: [
+    { name: 'NASA Wallops Visitor Center', address: 'NASA Wallops Flight Facility Visitor Center, Wallops Island, VA' },
+  ],
+  starbase: [
+    { name: 'Isla Blanca Park', address: 'Isla Blanca Park, South Padre Island, TX' },
+  ],
 }

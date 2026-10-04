@@ -13,6 +13,12 @@ ORBITAL_TO_WEATHER_SITE = {
     "CapeCanaveral": "cape-canaveral",
     "NovaScotia": "nova-scotia",
     "Nova-Scotia": "nova-scotia",  # the name lib_Calculations uses
+    "Vandenberg": "vandenberg",
+    "Wallops": "wallops",
+    "Kourou": "kourou",
+    "Baikonur": "baikonur",
+    "Tanegashima": "tanegashima",
+    "Starbase": "starbase",
 }
 
 

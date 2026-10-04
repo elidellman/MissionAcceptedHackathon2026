@@ -1,21 +1,31 @@
-/* Page root: scene underneath, HUD on top */
+/* Mission Control: full-screen 3D scene with a minimal HUD on top.
+ * Look: near-black glass, hairline borders, monospace numbers, small letter-spaced labels. */
+
 .root {
+  --hud-bg: rgba(8, 10, 16, 0.72);
+  --hud-border: rgba(255, 255, 255, 0.07);
+  --hud-text: rgba(255, 255, 255, 0.88);
+  --hud-dim: rgba(255, 255, 255, 0.45);
+  --hud-faint: rgba(255, 255, 255, 0.06);
+  --accent: #ff8a3d;
+  --accent-soft: rgba(255, 138, 61, 0.14);
+  --booster: #4fc3f7;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  color: var(--hud-text);
 }
 
 /* ── Scene ───────────────────────────────────────────── */
 .viewport {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at center, #0d1424 0%, #05070c 70%),
-    #05070c;
+  background: radial-gradient(ellipse at center, #0b111e 0%, #03050a 70%), #03050a;
 }
 
-/* Make whatever canvas gets mounted fill the viewport */
 .viewport canvas {
   display: block;
   width: 100% !important;
@@ -30,176 +40,436 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--hud-dim);
   text-align: center;
-  padding: 16px;
-  border: 2px dashed rgba(255, 255, 255, 0.08);
-  margin: 12px;
-  border-radius: 12px;
 }
+.placeholderTitle { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.placeholderMeta { margin: 0; font-size: 0.8rem; font-family: var(--mono); }
 
-
-
-.placeholderTitle {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.placeholderMeta {
-  margin: 0;
-  font-size: 0.8rem;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-}
-
-/* ── HUD ─────────────────────────────────────────────── */
+/* ── HUD frame ───────────────────────────────────────── */
 .hud {
   position: absolute;
   inset: 0;
-  pointer-events: none; /* let the 3D scene receive drag/zoom */
-  padding: 12px;
+  pointer-events: none; /* the 3D scene still gets drag / zoom */
+  padding: 16px;
 }
 
 .panel {
-  position: absolute;
   pointer-events: auto;
-  background: rgba(12, 15, 24, 0.78);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--hud-bg);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--hud-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
-/* Left: Mission inputs panel (sits above the bottom windows bar) */
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-dim);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--hud-dim);
+  margin-top: 6px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--hud-border);
+  margin: 12px 0 10px;
+}
+
+/* ── Left: mission inputs ────────────────────────────── */
 .inputPanel {
-  top: 12px;
-  left: 12px;
-  width: 300px;
-  max-width: calc(100% - 24px);
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 290px;
+  max-width: calc(100% - 32px);
+  padding: 16px;
   z-index: 2;
 }
 
 .panelToggle {
-  top: 12px;
-  left: 12px;
+  position: absolute;
+  top: 16px;
+  left: 16px;
 }
 
+/* ── Top right: clock + layers ───────────────────────── */
 .topRight {
-  top: 12px;
-  right: 12px;
-  text-align: right;
-  max-height: calc(100vh - 230px);
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 270px;
+  max-width: calc(100% - 32px);
+  padding: 14px 16px;
+  max-height: calc(100dvh - 260px);
   overflow-y: auto;
-  scrollbar-width: thin;                                      /* Firefox */
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;     /* Firefox: thumb, track */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-.topRight:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+.clock {
+  font-family: var(--mono);
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-top: 2px;
 }
 
-.topRight::-webkit-scrollbar {                                 /* Chrome, Edge, Safari */
-  width: 8px;
+.missionLine {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--hud-dim);
 }
 
-.topRight::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 6px 0;                                               /* keeps the bar off the rounded corners */
-}
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
 
-.topRight::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+.chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 7px;
   border-radius: 999px;
-  border: 2px solid transparent;                               /* makes the thumb look slimmer */
-  background-clip: padding-box;
+  border: 1px solid var(--hud-border);
+  background: var(--hud-faint);
+  color: var(--hud-text);
 }
 
-.topRight:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.35);
-  background-clip: padding-box;
+.layerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
 }
 
-.topRight::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.55);
-  background-clip: padding-box;
+.layerToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--hud-border);
+  background: transparent;
+  color: var(--hud-dim);
+  cursor: pointer;
+  transition: color 120ms, background 120ms, border-color 120ms;
+}
+.layerToggle:hover { color: var(--hud-text); }
+.layerToggle[data-active] {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--layer-color) 55%, transparent);
+  background: color-mix(in srgb, var(--layer-color) 14%, transparent);
 }
 
+.layerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--layer-color);
+  opacity: 0.45;
+}
+.layerToggle[data-active] .layerDot { opacity: 1; box-shadow: 0 0 6px var(--layer-color); }
+
+.moreToggle {
+  display: block;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--hud-dim);
+}
+.moreToggle:hover { color: var(--hud-text); }
+
+/* ── Bottom: timeline + windows ──────────────────────── */
 .bottom {
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
 }
 
-.countdown {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--mantine-color-orange-4);
+.windowsHeader {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
 }
 
 .windowRow {
+  display: flex;
+  gap: 8px;
   overflow-x: auto;
+  padding: 0 12px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 .windowCard {
   flex: 0 0 auto;
-  min-width: 130px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: inherit;
-  text-align: left;
-}
-
-.windowCard[data-selected] {
-  border-color: var(--mantine-color-orange-5);
-  background: rgba(255, 140, 0, 0.08);
-}
-
-@media (max-width: 600px) {
-  .countdown {
-    font-size: 1.1rem;
-  }
-}
-
-.errorBanner {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(40, 0, 0, 0.85);
-  padding: 6px 12px;
-  border-radius: 8px;
-}
-
-/* ── Live feed (opens when a launch site is clicked) ─────── */
-.liveFeed {
-  position: absolute;
-  top: 12px; /* lines up with the countdown panel; `right` is set inline from that panel's width */
-  width: 320px;
-  max-width: calc(100% - 24px);
-  pointer-events: auto; /* the HUD layer ignores the mouse, so re-enable it here */
-  z-index: 5;
+  min-width: 150px;
+  padding: 10px 12px;
   border-radius: 10px;
-  overflow: hidden;
-  background: rgba(12, 15, 24, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
+  border: 1px solid var(--hud-border);
+  background: var(--hud-faint);
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.windowCard:hover { border-color: rgba(255, 255, 255, 0.16); }
+.windowCard[data-selected] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
-.liveFeedHeader {
-  height: 30px;
+.windowTime {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.windowMeta {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 6px 0 10px;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.85);
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--hud-dim);
+}
+
+.weatherPill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.weatherPill[data-tone='go'] { color: #69db7c; background: rgba(105, 219, 124, 0.12); }
+.weatherPill[data-tone='caution'] { color: #ffd43b; background: rgba(255, 212, 59, 0.12); }
+.weatherPill[data-tone='nogo'] { color: #ff6b6b; background: rgba(255, 107, 107, 0.12); }
+.weatherPill[data-tone='none'] { color: var(--hud-dim); background: var(--hud-faint); }
+
+.windowActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.simulateButton {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: #1a0d00;
+  cursor: pointer;
+}
+.simulateButton:hover { filter: brightness(1.1); }
+
+.whyButton {
+  font: inherit;
+  font-size: 11px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--hud-dim);
+  cursor: pointer;
+}
+.whyButton:hover { color: var(--hud-text); }
+
+.windowReason {
+  max-width: 230px;
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--hud-dim);
+}
+
+/* ── Simulation timeline ─────────────────────────────── */
+.timeline { padding: 10px 14px 14px; }
+
+.timelineTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.iconButton {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--hud-border);
+  background: var(--hud-faint);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.iconButton:hover { border-color: rgba(255, 255, 255, 0.25); }
+
+.missionTime {
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  font-weight: 600;
+  min-width: 92px;
+}
+
+.phaseLabel {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.timelineSpacer { flex: 1; }
+
+.segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--hud-border);
+}
+.segmentedLabel {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-dim);
+  padding: 0 6px 0 8px;
+}
+.segmented button {
+  font: inherit;
+  font-size: 11px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: none;
+  background: none;
+  color: var(--hud-dim);
+  cursor: pointer;
+}
+.segmented button:hover { color: #fff; }
+.segmented button[data-active] { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+.track {
+  position: relative;
+  height: 22px;
+  margin-top: 10px;
+}
+
+.trackRail,
+.trackFill {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  height: 2px;
+  border-radius: 2px;
+}
+.trackRail { right: 0; background: rgba(255, 255, 255, 0.12); }
+.trackFill { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+.trackDivider {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.trackDivider span {
+  position: absolute;
+  top: -12px;
+  left: 6px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hud-dim);
+  white-space: nowrap;
+}
+
+.trackMarker {
+  position: absolute;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: #0b0f18;
+  padding: 0;
+  cursor: pointer;
+  z-index: 2;
+  transition: transform 120ms;
+}
+.trackMarker:hover { transform: scale(1.35); }
+.trackMarker[data-booster] { border-color: var(--booster); }
+.trackMarker[data-passed] { background: var(--accent); border-color: var(--accent); }
+.trackMarker[data-booster][data-passed] { background: var(--booster); border-color: var(--booster); }
+
+/* Invisible range input on top of the rail: drag anywhere to scrub */
+.trackInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* ── Error banner ────────────────────────────────────── */
+.errorBanner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(60, 10, 10, 0.85);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+/* ── Live feed (opens when a site or the ISS is clicked) ─ */
+.liveFeed {
+  position: absolute;
+  top: 16px; /* `right` is set inline from the top-right panel's width */
+  width: 320px;
+  max-width: calc(100% - 32px);
+  pointer-events: auto;
+  z-index: 5;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(14px);
+}
+
+.liveFeedHeader {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  font-size: 11px;
 }
 
 .liveDot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #ff4d4f;
   box-shadow: 0 0 6px #ff4d4f;
@@ -217,7 +487,7 @@
 .liveFeedClose {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--hud-dim);
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
@@ -230,4 +500,13 @@
   width: 100%;
   height: 180px;
   border: 0;
+}
+
+/* ── Small screens ───────────────────────────────────── */
+@media (max-width: 700px) {
+  .hud { padding: 10px; }
+  .topRight { width: 200px; padding: 10px 12px; }
+  .clock { font-size: 1.1rem; }
+  .segmentedLabel { display: none; }
+  .bottom { left: 10px; right: 10px; bottom: 10px; }
 }

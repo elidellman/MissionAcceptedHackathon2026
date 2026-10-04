@@ -39,7 +39,14 @@ LAUNCH_SITES = {
         "name": "Cape Canaveral SLC-40",
         "latitude": 28.5618,
         "longitude": -80.5770
-    }
+    },
+
+    "vandenberg": {"name": "Vandenberg SLC-4E", "latitude": 34.6321, "longitude": -120.6106},
+    "wallops": {"name": "Wallops Pad 0A", "latitude": 37.8337, "longitude": -75.4881},
+    "kourou": {"name": "Guiana Space Centre (Kourou)", "latitude": 5.2390, "longitude": -52.7680},
+    "baikonur": {"name": "Baikonur Cosmodrome", "latitude": 45.9200, "longitude": 63.3420},
+    "tanegashima": {"name": "Tanegashima Space Center", "latitude": 30.4000, "longitude": 130.9770},
+    "starbase": {"name": "SpaceX Starbase", "latitude": 25.9970, "longitude": -97.1570}
 }
 
 

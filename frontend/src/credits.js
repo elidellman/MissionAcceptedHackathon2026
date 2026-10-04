@@ -17,7 +17,7 @@ export const CREDITS = {
     license: 'embedded via YouTube',
   },
   novaScotiaWeather: {
-    what: 'Nova Scotia live weather map',
+    what: 'Live weather maps over the launch sites',
     by: 'Windy.com',
     url: 'https://www.windy.com',
     license: 'embedded per Windy terms',

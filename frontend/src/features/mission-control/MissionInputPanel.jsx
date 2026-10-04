@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import {
   ActionIcon,
   Alert,
-  Badge,
   Button,
+  Collapse,
   Group,
   NumberInput,
   Paper,
@@ -13,6 +13,7 @@ import {
   Stack,
   Text,
   Tooltip,
+  UnstyledButton,
 } from '@mantine/core'
 import { LAUNCH_SITES, ORBIT_PRESETS, getSite, isDirectlyReachable } from './launchConfig.js'
 import classes from './MissionControl.module.css'
@@ -24,6 +25,7 @@ import classes from './MissionControl.module.css'
  */
 export default function MissionInputPanel({ params, onPreviewChange, onSubmit, loading }) {
   const [open, setOpen] = useState(() => window.innerWidth >= 700)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
   const updateValue = (key, value) => {
     const next = { ...params, [key]: value }
@@ -101,11 +103,9 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
   }
 
   return (
-    <Paper className={`${classes.panel} ${classes.inputPanel}`} p="md">
+    <Paper className={`${classes.panel} ${classes.inputPanel}`}>
       <Group justify="space-between" mb="xs" wrap="nowrap">
-        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-          Mission inputs
-        </Text>
+        <span className={classes.label}>Mission</span>
         <ActionIcon variant="subtle" color="gray" onClick={() => setOpen(false)} aria-label="Collapse mission inputs">
           ✕
         </ActionIcon>
@@ -134,7 +134,7 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
 
             <div>
               <Text size="sm" fw={500} mb={4}>
-                Orbit preset
+                Orbit
               </Text>
               <SegmentedControl
                 fullWidth
@@ -142,8 +142,27 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
                 value={params.orbit}
                 onChange={pickOrbit}
               />
+              <Text size="xs" c="dimmed" mt={4}>
+                {params.inclinationDeg}° inclination · {params.altitudeKm} km up
+              </Text>
+            </div>
 
-              <Stack gap="xs" mt="sm">
+            <NumberInput
+              label="Search ahead (days)"
+              value={params.days}
+              onChange={(value) => updateNumericValue('days', value)}
+              min={1}
+              max={16}
+            />
+
+            <UnstyledButton onClick={() => setAdvancedOpen((wasOpen) => !wasOpen)} aria-expanded={advancedOpen}>
+              <Text size="xs" c="dimmed">
+                Advanced {advancedOpen ? '▴' : '▾'}
+              </Text>
+            </UnstyledButton>
+
+            <Collapse expanded={advancedOpen}>
+              <Stack gap="xs">
                 <NumberInput
                   label="Inclination (°)"
                   value={params.inclinationDeg}
@@ -159,46 +178,27 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
                   min={0}
                   step={1}
                 />
+                <NumberInput
+                  label="RAAN (°)"
+                  description="Optional: orientation of the target orbit's plane"
+                  value={params.raanDeg ?? ''}
+                  onChange={(value) => updateOptionalNumericValue('raanDeg', value)}
+                  min={0}
+                  max={360}
+                  step={0.1}
+                  placeholder="Optional"
+                />
+                <NumberInput
+                  label="Vehicle duration (s)"
+                  description="Optional: time from liftoff to orbit"
+                  value={params.vehicleDurationSec ?? ''}
+                  onChange={(value) => updateOptionalNumericValue('vehicleDurationSec', value)}
+                  min={0}
+                  step={1}
+                  placeholder="Optional"
+                />
               </Stack>
-            </div>
-
-            <Group gap="xs">
-              <Badge variant="outline" color="gray">Inclination {params.inclinationDeg}°</Badge>
-              <Badge variant="outline" color="gray">Altitude {params.altitudeKm} km</Badge>
-            </Group>
-
-            <NumberInput
-              label="Search ahead (days)"
-              value={params.days}
-              onChange={(value) => updateNumericValue('days', value)}
-              min={1}
-              max={16}
-            />
-
-            <NumberInput
-              label="RAAN (°)"
-              description="Optional target orbital plane orientation"
-              value={params.raanDeg ?? ''}
-              onChange={(value) =>
-                updateOptionalNumericValue('raanDeg', value)
-              }
-              min={0}
-              max={360}
-              step={0.1}
-              placeholder="Optional"
-            />
-
-            <NumberInput
-              label="Vehicle duration (seconds)"
-              description="Time from liftoff to orbital insertion"
-              value={params.vehicleDurationSec ?? ''}
-              onChange={(value) =>
-                updateOptionalNumericValue('vehicleDurationSec', value)
-              }
-              min={0}
-              step={1}
-              placeholder="Optional"
-            />
+            </Collapse>
 
             {!reachable && Number.isFinite(incl) && (
               <Alert color="yellow" variant="light" p="xs">
@@ -208,11 +208,6 @@ export default function MissionInputPanel({ params, onPreviewChange, onSubmit, l
                 </Text>
               </Alert>
             )}
-
-            <Text size="xs" c="dimmed">
-              Weather is checked automatically for each window, against launch rules plus an early warning.
-              Click “Why?” on a window to see the reason.
-            </Text>
 
             <Button type="submit" loading={loading} disabled={!valid} fullWidth>
               Calculate windows

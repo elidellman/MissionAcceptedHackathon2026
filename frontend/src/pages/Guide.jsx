@@ -8,10 +8,10 @@ import { ROUTES } from '../routes.js'
  */
 
 const QUICK_START = [
-  { n: 1, title: 'Pick a mission', body: 'In Mission inputs (left), choose a launch site and an orbit preset: LEO, Polar or SSO.' },
+  { n: 1, title: 'Pick a mission', body: 'In the Mission panel (left), choose one of eight launch sites and an orbit: LEO, Polar or SSO.' },
   { n: 2, title: 'Calculate windows', body: 'The bar at the bottom fills with launch windows, each rated GO, CAUTION or NO-GO.' },
   { n: 3, title: 'Pick a window', body: 'Click a window card. The clock jumps to that window’s opening time.' },
-  { n: 4, title: 'Simulate', body: 'Press Simulate on the card to watch the rocket launch, reach orbit and release the satellite.' },
+  { n: 4, title: 'Simulate', body: 'Press Simulate to watch the launch: stage separation, the booster landing, orbit and satellite release. Use the timeline to pause or jump around.' },
 ]
 
 const DATA_SOURCES = [
@@ -71,16 +71,16 @@ export default function Guide() {
               <Accordion.Control>Mission inputs (left panel)</Accordion.Control>
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
-                  <List.Item><b>Launch site</b>: Cape Canaveral SLC-40 (Florida) or Spaceport Nova Scotia (Canso).</List.Item>
-                  <List.Item><b>Orbit preset</b>: LEO, Polar or SSO fills in a typical inclination and altitude. You can still edit both.</List.Item>
+                  <List.Item><b>Launch site</b>: eight sites: Spaceport Nova Scotia, Cape Canaveral, Vandenberg, Wallops, Kourou (Guiana Space Centre), Baikonur, Tanegashima and SpaceX Starbase.</List.Item>
+                  <List.Item><b>Orbit</b>: LEO, Polar or SSO fills in a typical inclination and altitude. Open <b>Advanced ▾</b> to edit them.</List.Item>
                   <List.Item><b>Search ahead</b>: how many days of windows to look for. The backend searches up to 16 days.</List.Item>
                   <List.Item>
-                    <b>RAAN</b> (optional): the orientation of the target orbit. With it, the backend finds the exact moments
+                    <b>RAAN</b> (optional, under Advanced): the orientation of the target orbit. With it, the backend finds the exact moments
                     Earth’s rotation carries the pad under the orbit, usually two short windows a day. Without it, you get
                     hourly launch slots.
                   </List.Item>
-                  <List.Item><b>Vehicle duration</b> (optional): seconds from liftoff to orbit, used to correct the launch heading for Earth’s rotation during the climb.</List.Item>
-                  <List.Item><b>Reachability warning</b>: if the orbit’s inclination is lower than the site’s latitude, the rocket can’t reach it directly. For example, Nova Scotia (45.3° N) can’t reach LEO at 45.1°.</List.Item>
+                  <List.Item><b>Vehicle duration</b> (optional, under Advanced): seconds from liftoff to orbit, used to correct the launch heading for Earth’s rotation during the climb.</List.Item>
+                  <List.Item><b>Reachability warning</b>: if the orbit’s inclination is lower than the site’s latitude, the rocket can’t reach it directly. For example, Nova Scotia (45.3° N) and Baikonur (45.9° N) can’t reach LEO at 45.1°.</List.Item>
                   <List.Item><b>Changing any input</b> stops the simulation and hides the old path until you press <b>Calculate windows</b> again, so the globe never shows a path for settings you haven’t calculated.</List.Item>
                   <List.Item>Hide the panel with <b>✕</b> and bring it back with <b>☰</b>.</List.Item>
                 </List>
@@ -107,8 +107,7 @@ export default function Guide() {
                   <List.Item><b>NO-GO windows have no Simulate button</b>: you can only launch when the weather allows it.</List.Item>
                   <List.Item>Windows more than 16 days out show NO FORECAST, because weather forecasts don’t reach that far.</List.Item>
                   <List.Item><b>Click a card</b> to select it: the clock (top right) shows that window’s opening time. <b>Click it again</b> to deselect and go back to the current time.</List.Item>
-                  <List.Item><b>Speed</b> (under the clock) sets how fast the simulation runs, from 1× (real time) to 300×. It resets to 60× when you pick a new window.</List.Item>
-                  <List.Item>If no windows come back, the bar says so. Usually the orbit can’t be reached from that site.</List.Item>
+                                    <List.Item>If no windows come back, the bar says so. Usually the orbit can’t be reached from that site.</List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>
@@ -117,11 +116,35 @@ export default function Guide() {
               <Accordion.Control>Launch simulation</Accordion.Control>
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
-                  <List.Item>Press <b>Simulate</b> on a GO or CAUTION window card. The rocket lifts off from the pad and climbs along the red ascent path, leaving an orange trail.</List.Item>
-                  <List.Item>At orbit the rocket releases a <b>satellite</b>, which carries on around the target orbit (red ring). The <b>green marker</b> shows a simplified landing zone.</List.Item>
+                  <List.Item>Press <b>▶ Simulate</b> on a GO or CAUTION window. The rocket lifts off vertically, pitches over (gravity turn) and climbs along the red ascent path, leaving an orange trail. The path follows a realistic profile: about 70 km up and 100 km downrange when the first stage shuts down, reaching orbit roughly 1,900 km downrange after 9 minutes.</List.Item>
+                  <List.Item>
+                    <b>Stages</b>: at <b>T+2:30</b> the first-stage engines cut off and the stages separate. The second stage lights,
+                    the <b>fairing halves</b> peel away at T+3:15, the engine cuts off in orbit at T+9:00 and the <b>satellite</b> is
+                    released at T+10:00, then carries on around the target orbit (red ring).
+                  </List.Item>
+                  <List.Item>
+                    <b>Booster recovery</b> (blue dashed line) depends on the site. At <b>Cape Canaveral</b> and <b>Vandenberg</b> it flips,
+                    burns back and lands at the landing zone; at <b>Starbase</b> it returns to the tower. From <b>Nova Scotia</b>, <b>Wallops</b> and
+                    <b>Kourou</b> it lands on a <b>drone ship</b> about 600 km out at sea. <b>Baikonur</b> and <b>Tanegashima</b> boosters aren’t
+                    recovered, so they fall away. Watch for the boostback, entry and landing burns, and the legs opening just before touchdown.
+                  </List.Item>
                   <List.Item>The <b>camera follows</b> automatically: a chase view during the climb, then a slow zoom out once in orbit.</List.Item>
                   <List.Item><b>Scroll</b> to zoom while it keeps following. <b>Click or drag</b> the globe to stop following and look around yourself.</List.Item>
                   <List.Item>A <b>debris banner</b> at the top shows whether anything tracked passes within 10 km of the ascent path, and names the closest object.</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="timeline">
+              <Accordion.Control>Simulation timeline</Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item>While a launch plays, a <b>timeline</b> appears at the bottom (the window list tucks away; reopen it with ▴).</List.Item>
+                  <List.Item><b>❚❚ / ▶</b> pauses and plays, <b>↺</b> restarts from liftoff, and the <b>T+ clock</b> shows mission time with the current phase next to it.</List.Item>
+                  <List.Item>Each dot is a mission event: hover for its name and time, <b>click</b> to jump there. Blue dots are booster events. <b>Drag</b> anywhere on the bar to scrub, forwards or backwards.</List.Item>
+                  <List.Item>The first three-quarters of the bar is the 12-minute launch; the last quarter is the satellite’s first full orbit.</List.Item>
+                  <List.Item><b>Camera</b>: follow the <b>Rocket</b> (then the satellite), follow the <b>Booster</b> home, or <b>Free</b> to look around yourself.</List.Item>
+                  <List.Item><b>Speed</b>: 1× (real time) up to 300×. Each new launch starts at 10×, so the climb to orbit takes about a minute.</List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>
@@ -131,9 +154,9 @@ export default function Guide() {
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
                   <List.Item><b>Drag</b> to rotate, <b>scroll</b> to zoom. Hover over objects to see their names.</List.Item>
-                  <List.Item>The <b>launch sites</b> are miniature 3D models: Cape Canaveral has its assembly building, tower and rocket; Nova Scotia has a tower and rocket. The yellow ring marks the selected site.</List.Item>
+                  <List.Item>The <b>launch sites</b> are miniature 3D models: each has a pad, tower and rocket, and the big sites (Cape Canaveral, Kourou, Baikonur) also have an assembly building. The yellow ring marks the selected site.</List.Item>
                   <List.Item><b>Click a launch site</b> to select it and fly the camera there.</List.Item>
-                  <List.Item>The <b>red line</b> is the ascent path, the <b>red ring</b> is the target orbit, and the <b>green dot</b> is where the rocket reaches orbit.</List.Item>
+                  <List.Item>The <b>red line</b> is the ascent path, the <b>red ring</b> is the target orbit, the <b>green dot</b> is where the rocket reaches orbit, and the <b>blue dashed line</b> is the booster’s way home.</List.Item>
                   <List.Item>The Sun, the Moon and a 3D star field surround the scene.</List.Item>
                 </List>
               </Accordion.Panel>
@@ -144,8 +167,8 @@ export default function Guide() {
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
                   <List.Item><b>Click Cape Canaveral</b> on the globe to open a live video of the launch pads (top right).</List.Item>
-                  <List.Item><b>Click Spaceport Nova Scotia</b> to open a live weather map of the site. There’s no public pad camera yet.</List.Item>
-                  <List.Item>Press <b>Show ISS</b> to add the International Space Station at its real, live position, with its orbit: a fading trail behind and moving dashes ahead.</List.Item>
+                  <List.Item><b>Click any other site</b> to open a live weather map over it. None of them has a reliable public pad camera.</List.Item>
+                  <List.Item>Turn on the <b>ISS</b> layer (top right) to add the International Space Station at its real, live position, with its orbit: a fading trail behind and moving dashes ahead.</List.Item>
                   <List.Item><b>Click the ISS</b> to open NASA’s live video from the station. Hover over it to see its altitude and speed.</List.Item>
                   <List.Item>The feed follows the site you select, and closes with <b>×</b>. Videos start muted; unmute them in the player.</List.Item>
                 </List>
@@ -156,8 +179,8 @@ export default function Guide() {
               <Accordion.Control>Orbital shells and space debris</Accordion.Control>
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
-                  <List.Item><b>LEO / Polar / SSO</b> buttons (top right) show the altitude band each orbit type uses, as see-through shells around Earth.</List.Item>
-                  <List.Item><b>Show debris</b> draws thousands of tracked debris objects as a red cloud. Bright red points are close to where your rocket reaches orbit.</List.Item>
+                  <List.Item>The <b>LEO / Polar / SSO</b> layers (top right) show the altitude band each orbit type uses, as see-through shells around Earth.</List.Item>
+                  <List.Item>The <b>Debris</b> layer draws thousands of tracked debris objects as a red cloud. Bright red points are close to where your rocket reaches orbit.</List.Item>
                   <List.Item>Toggling these layers never moves the camera.</List.Item>
                 </List>
               </Accordion.Panel>
@@ -167,8 +190,8 @@ export default function Guide() {
               <Accordion.Control>Viewing spots, credits and other extras</Accordion.Control>
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
-                  <List.Item><b>Spots to view the launch</b> (top-right panel): expand it for nearby public viewing places, with photos, distance from the pad and a Google Maps link.</List.Item>
-                  <List.Item><b>Sources & credits</b> (top-right panel and About page): where every image, video and dataset comes from.</List.Item>
+                  <List.Item><b>Viewing spots & sources ▾</b> (top-right panel): expand it for nearby public viewing places, with photos, distance from the pad and a Google Maps link.</List.Item>
+                  <List.Item><b>Sources & credits</b> (same section, and the About page): where every image, video and dataset comes from.</List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>

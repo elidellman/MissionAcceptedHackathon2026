@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Text } from '@mantine/core'
 import SceneViewport from '../features/mission-control/SceneViewport.jsx'
 import HudOverlay from '../features/mission-control/HudOverlay.jsx'
 import MissionInputPanel from '../features/mission-control/MissionInputPanel.jsx'
 import { DEFAULT_PARAMS, ISS, getSite } from '../features/mission-control/launchConfig.js'
 import { fetchLaunchWindows, fetchTrajectory } from '../api/missionApi.js'
-import { DEFAULT_TIME_SCALE } from '../features/mission-control/simConfig.js'
+import { DEFAULT_TIME_SCALE, createSimClock } from '../features/mission-control/simConfig.js'
 import classes from '../features/mission-control/MissionControl.module.css'
 
 /**
@@ -38,6 +38,9 @@ export default function MissionControl() {
   })
   const [simulation, setSimulation] = useState(null)
   const [timeScale, setTimeScale] = useState(DEFAULT_TIME_SCALE)
+  const [playing, setPlaying] = useState(true)
+  // Shared simulation clock: the 3D animation advances it, the timeline reads and seeks it
+  const simClock = useRef(createSimClock()).current
 
   // Launch site whose live feed is open (set by clicking a site that has `liveFeed` on the globe)
   const [liveFeedSite, setLiveFeedSite] = useState(null)
@@ -144,6 +147,8 @@ export default function MissionControl() {
 
       // New object each press so repeat clicks re-trigger the animation.
       setSimulation({ windowId, nonce: Date.now() })
+      setPlaying(true)
+      setTimeScale(DEFAULT_TIME_SCALE)
     },
     [windows, mission]
   )
@@ -156,14 +161,14 @@ export default function MissionControl() {
   }, [])
 
   const handleSubmit = (params) => {
-  setMission(null)
-  setWindows([])
-  setSelectedId(null)
-  setTrajectory(null)
+    setMission(null)
+    setWindows([])
+    setSelectedId(null)
+    setTrajectory(null)
 
-  setSubmittedParams(params)
-  setPreviewParams(params)
-}
+    setSubmittedParams(params)
+    setPreviewParams(params)
+  }
 
   return (
     <div className={classes.root}>
@@ -176,6 +181,8 @@ export default function MissionControl() {
         draftParams={previewParams}
         simulation={simulation}
         timeScale={timeScale}
+        playing={playing}
+        simClock={simClock}
         onTargetBaseChange={handleTargetBaseChange}
         onLaunchSiteClick={(site) =>
           setLiveFeedSite(site?.liveFeed ? site : null)
@@ -192,6 +199,9 @@ export default function MissionControl() {
         onSelect={handleSelectWindow}
         onSimulate={handleSimulateLaunch}
         simulation={simulation}
+        simClock={simClock}
+        playing={playing}
+        onPlayingChange={setPlaying}
         timeScale={timeScale}
         onTimeScaleChange={setTimeScale}
         shellsVisible={shellsVisible}

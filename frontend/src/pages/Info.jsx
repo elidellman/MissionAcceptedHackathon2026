@@ -65,7 +65,7 @@ export default function Info() {
           <List spacing="xs">
             <List.Item><b>Orbital requirements</b>: target orbit type, inclination and altitude, plus the orbit’s orientation (RAAN) if you give one.</List.Item>
             <List.Item><b>Earth's rotation</b>: when the launch site passes under the orbital plane. With a RAAN this gives exact windows, usually two a day.</List.Item>
-            <List.Item><b>Launch site</b>: latitude limits which inclinations are reachable directly. Nova Scotia (45.3° N) can’t reach LEO at 45.1°.</List.Item>
+            <List.Item><b>Launch site</b>: latitude limits which inclinations are reachable directly. Nova Scotia (45.3° N) and Baikonur (45.9° N) can’t reach LEO at 45.1°.</List.Item>
             <List.Item><b>Vehicle duration</b>: how long the rocket takes to reach orbit, used to correct the launch heading for Earth’s rotation during the climb (optional).</List.Item>
             <List.Item><b>Scheduled launches</b>: windows that overlap a launch already booked at the same site are removed (The Space Devs Launch Library).</List.Item>
             <List.Item><b>Weather</b>: a live forecast at the pad, checked against launch rules and an early warning (details below).</List.Item>

@@ -1,7 +1,7 @@
 import time
 from datetime import datetime, timedelta, timezone
 
-from backend.launch_data import filter_conflicting_windows, get_cape_launches, get_ns_launches
+from backend.launch_data import filter_conflicting_windows, get_all_upcoming_launches, launches_at_site
 from backend.lib_Calculations import (
     OrbitTypes,
     get_Azimuth,
@@ -14,20 +14,19 @@ from backend.lib_Calculations import (
 # upcoming launches for 30 minutes. If the fetch fails, skip the conflict check
 # instead of failing the whole calculation.
 _LAUNCH_CACHE_SECONDS = 30 * 60
-_launch_cache = {}  # launch_site -> (fetched_at, launches)
+_launch_cache = {"fetched_at": 0, "launches": None}  # one fetch covers every site
 
 
-def _existing_launches(launch_site, fetch):
-    cached = _launch_cache.get(launch_site)
-    if cached and time.time() - cached[0] < _LAUNCH_CACHE_SECONDS:
-        return cached[1]
-    try:
-        launches = fetch()
-    except Exception as error:
-        print(f"[launch_data] couldn't fetch existing launches for {launch_site}: {error}")
-        return cached[1] if cached else []
-    _launch_cache[launch_site] = (time.time(), launches)
-    return launches
+def _existing_launches(launch_site):
+    if _launch_cache["launches"] is None or time.time() - _launch_cache["fetched_at"] > _LAUNCH_CACHE_SECONDS:
+        try:
+            _launch_cache["launches"] = get_all_upcoming_launches()
+            _launch_cache["fetched_at"] = time.time()
+        except Exception as error:
+            print(f"[launch_data] couldn't fetch existing launches: {error}")
+            if _launch_cache["launches"] is None:
+                return []
+    return launches_at_site(_launch_cache["launches"], launch_site)
 
 
 def calculate_launch_windows(
@@ -82,20 +81,11 @@ def calculate_launch_windows(
             vehicle_duration or 0
         )
 
-    # Check existing launches
-    if launch_site == "CapeCanaveral":
-        launches = _existing_launches(launch_site, get_cape_launches)
-        windows = filter_conflicting_windows(
-            windows,
-            launches
-        )
-
-    if launch_site == "SpacePort":
-        launches = _existing_launches(launch_site, get_ns_launches)
-        windows = filter_conflicting_windows(
-            windows,
-            launches
-        )
+    # Remove windows that clash with launches already scheduled at this site
+    windows = filter_conflicting_windows(
+        windows,
+        _existing_launches(launch_site)
+    )
 
     return {
         "launch_site": launch_site,

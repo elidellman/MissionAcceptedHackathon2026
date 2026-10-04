@@ -6,5 +6,6 @@ body,
 }
 
 body {
-  background: #07090f;
+  background: #05070c;
+  -webkit-font-smoothing: antialiased;
 }
