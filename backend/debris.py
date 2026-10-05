@@ -2,6 +2,8 @@ import json, math, time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import json, math, os, time
+
 import numpy as np
 import requests
 from sgp4 import omm
@@ -14,22 +16,24 @@ MAX_AGE_S = 3 * 3600                 # don't hit CelesTrak more often than this
 
 _state = {"sats": None, "meta": None, "loaded_at": 0}
 
+FETCH_TIMEOUT_S = 8
 
 def _load_records():
-    fresh = CACHE.exists() and time.time() - CACHE.stat().st_mtime < MAX_AGE_S
-    if not fresh:
+    exists = CACHE.exists()
+    fresh = exists and time.time() - CACHE.stat().st_mtime < MAX_AGE_S
+    # DEBRIS_OFFLINE=1 (set it on Render) means: only ever use the committed cache
+    if not fresh and os.environ.get("DEBRIS_OFFLINE") != "1":
         try:
             records = []
             for query in QUERIES:
-                response = requests.get(URL, params={**query, "FORMAT": "JSON"}, timeout=30)
+                response = requests.get(URL, params={**query, "FORMAT": "JSON"}, timeout=FETCH_TIMEOUT_S)
                 response.raise_for_status()
                 records += response.json()
             CACHE.write_text(json.dumps(records))
         except Exception:
-            if not CACHE.exists():
+            if not exists:
                 raise                # nothing cached either, so fail loudly
     return json.loads(CACHE.read_text())
-
 
 def _get_sats():
     if _state["sats"] is None or time.time() - _state["loaded_at"] > MAX_AGE_S:

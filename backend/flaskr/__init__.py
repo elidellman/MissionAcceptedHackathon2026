@@ -67,7 +67,11 @@ def create_app(test_config=None):
         __name__,
         instance_relative_config=True
     )
-    CORS(app, origins=["https://elidellman.github.io"])
+    CORS(app, resources={r"/api/*": {"origins": [
+        "https://elidellman.github.io",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]}})
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(
@@ -684,15 +688,11 @@ def create_app(test_config=None):
             ), 400
 
 
-        return jsonify(
-            screen(
-                lat,
-                lon,
-                alt_km,
-                when,
-                radius
-            )
-        )
+        try:
+            return jsonify(screen(lat, lon, alt_km, when, radius))
+        except Exception as e:
+            app.logger.exception("debris screen failed")
+            return jsonify(error=f"{type(e).__name__}: {e}"), 500
 
 
     # -------------------------
